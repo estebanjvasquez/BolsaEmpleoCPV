@@ -1,0 +1,229 @@
+datasource db {
+  provider  = "postgresql"
+  // Runtime: Supabase Supavisor transaction pooler (port 6543), accelerated by Cloudflare Hyperdrive.
+  url       = env("DATABASE_URL")
+  // Migrations: Supabase direct/session connection (port 5432) — pooler can't run DDL.
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  // Driver adapters (e.g. @prisma/adapter-pg over Hyperdrive) are GA as of Prisma 6.x —
+  // no previewFeatures flag needed to run this client on the Cloudflare Workers runtime.
+}
+
+enum ProfessionalStatus {
+  pending
+  approved
+  rejected
+}
+
+enum HiredStatus {
+  looking
+  hired_via_portal
+  hired_externally
+}
+
+enum UserRole {
+  superadmin
+  moderator
+}
+
+enum ContactStatus {
+  pending_admin
+  sent
+  blocked
+}
+
+enum ContactResult {
+  pending
+  hired
+  not_hired
+  in_progress
+}
+
+model Area {
+  id           Int           @id @default(autoincrement())
+  name         String        @unique @db.VarChar(100)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  createdBy    String        @default("system") @map("created_by")
+  subareas     Subarea[]
+  professionals Professional[]
+
+  @@map("areas")
+}
+
+model Subarea {
+  id           Int           @id @default(autoincrement())
+  areaId       Int           @map("area_id")
+  area         Area          @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  name         String        @db.VarChar(100)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  createdBy    String        @default("system") @map("created_by")
+  professionals Professional[]
+
+  @@unique([areaId, name], name: "uq_subarea_per_area")
+  @@map("subareas")
+}
+
+model Sector {
+  id           Int           @id @default(autoincrement())
+  name         String        @unique @db.VarChar(100)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  createdBy    String        @default("system") @map("created_by")
+  professionals Professional[]
+
+  @@map("sectors")
+}
+
+model Certification {
+  id           Int                         @id @default(autoincrement())
+  name         String                      @unique @db.VarChar(100)
+  createdAt    DateTime                    @default(now()) @map("created_at")
+  updatedAt    DateTime                    @updatedAt @map("updated_at")
+  createdBy    String                      @default("system") @map("created_by")
+  professionals ProfessionalCertification[]
+
+  @@map("certifications")
+}
+
+model Company {
+  id           String        @id @default(uuid()) @db.Uuid
+  name         String        @db.VarChar(150)
+  rif          String        @unique @db.VarChar(20)
+  email        String        @unique @db.VarChar(150)
+  phone        String        @db.VarChar(50)
+  passwordHash String        @map("password_hash") @db.VarChar(255)
+  isVerified   Boolean       @default(false) @map("is_verified")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  searches     SearchLog[]
+  contacts     ContactLog[]
+
+  @@map("companies")
+}
+
+model Admin {
+  id           String        @id @default(uuid()) @db.Uuid
+  username     String        @unique @db.VarChar(50)
+  email        String        @unique @db.VarChar(150)
+  passwordHash String        @map("password_hash") @db.VarChar(255)
+  role         UserRole      @default(moderator)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  piiAccesses  PiiAccessLog[]
+
+  @@map("admins")
+}
+
+model Professional {
+  id                     String                      @id @default(uuid()) @db.Uuid
+  firstName              String                      @map("first_name") @db.VarChar(100)
+  lastName               String                      @map("last_name") @db.VarChar(100)
+  documentType           String                      @map("document_type") @db.VarChar(10)
+  documentNumberEncrypted String                     @map("document_number_encrypted") @db.VarChar(255)
+  documentNumberHash     String                      @unique @map("document_number_hash") @db.Char(64)
+  email                  String                      @unique @db.VarChar(150)
+  emailVerified          Boolean                     @default(false) @map("email_verified")
+  emailVerificationTokenHash String?                 @map("email_verification_token_hash") @db.Char(64)
+  phoneEncrypted         String                      @map("phone_encrypted") @db.VarChar(255)
+  city                   String                      @db.VarChar(100)
+  state                  String                      @db.VarChar(100)
+  areaId                 Int                         @map("area_id")
+  area                   Area                        @relation(fields: [areaId], references: [id])
+  subareaId              Int                         @map("subarea_id")
+  subarea                Subarea                     @relation(fields: [subareaId], references: [id])
+  experienceYears        Int                         @map("experience_years")
+  lastPosition           String                      @map("last_position") @db.VarChar(150)
+  bioSummary             String                      @map("bio_summary") @db.Text
+  sectorId               Int                         @map("sector_id")
+  sector                 Sector                      @relation(fields: [sectorId], references: [id])
+  educationLevel         String                      @map("education_level") @db.VarChar(50)
+  relocationWilling      Boolean                     @default(false) @map("relocation_willing")
+  jobTypesWilling        String[]                    @map("job_types_willing")
+  immediateAvailability  Boolean                     @default(false) @map("immediate_availability")
+  salaryExpectation      Decimal?                    @map("salary_expectation") @db.Decimal(12, 2)
+  status                 ProfessionalStatus          @default(pending)
+  hiredStatus            HiredStatus                 @default(looking) @map("hired_status")
+  hiredAt                DateTime?                   @map("hired_at")
+  availabilityTokenHash  String?                     @map("availability_token_hash") @db.Char(64)
+  editableUntil          DateTime?                   @map("editable_until")
+  editTokenHash          String?                     @map("edit_token_hash") @db.Char(64)
+  consentGiven           Boolean                     @default(false) @map("consent_given")
+  consentVersion         String                      @default("v1") @map("consent_version") @db.VarChar(20)
+  consentIp              String?                     @map("consent_ip") @db.VarChar(45)
+  consentDate            DateTime                    @default(now()) @map("consent_date")
+  createdAt              DateTime                    @default(now()) @map("created_at")
+  updatedAt              DateTime                    @updatedAt @map("updated_at")
+  certifications         ProfessionalCertification[]
+  languages              ProfessionalLanguage[]
+  contacts               ContactLog[]
+  piiAccesses            PiiAccessLog[]
+
+  @@map("professionals")
+}
+
+model ProfessionalCertification {
+  professionalId String        @map("professional_id") @db.Uuid
+  professional   Professional  @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  certificationId Int          @map("certification_id")
+  certification  Certification @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+  issueDate      DateTime?     @map("issue_date") @db.Date
+
+  @@id([professionalId, certificationId])
+  @@map("professional_certifications")
+}
+
+model ProfessionalLanguage {
+  id             Int          @id @default(autoincrement())
+  professionalId String       @map("professional_id") @db.Uuid
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  language       String       @db.VarChar(50)
+  level          String       @db.VarChar(20)
+
+  @@unique([professionalId, language], name: "uq_professional_language")
+  @@map("professional_languages")
+}
+
+model SearchLog {
+  id           Int           @id @default(autoincrement())
+  companyId    String        @map("company_id") @db.Uuid
+  company      Company       @relation(fields: [companyId], references: [id])
+  queryParams  Json          @map("query_params")
+  resultsCount Int           @map("results_count")
+  ipAddress    String        @map("ip_address") @db.VarChar(45)
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  @@map("searches_log")
+}
+
+model ContactLog {
+  id                String        @id @default(uuid()) @db.Uuid
+  companyId         String        @map("company_id") @db.Uuid
+  company           Company       @relation(fields: [companyId], references: [id])
+  professionalId    String        @map("professional_id") @db.Uuid
+  professional      Professional  @relation(fields: [professionalId], references: [id])
+  message           String        @db.Text
+  status            ContactStatus @default(pending_admin)
+  result            ContactResult @default(pending)
+  feedbackUpdatedAt DateTime?     @map("feedback_updated_at")
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  @@map("contacts_log")
+}
+
+model PiiAccessLog {
+  id             String       @id @default(uuid()) @db.Uuid
+  adminId        String       @map("admin_id") @db.Uuid
+  admin          Admin        @relation(fields: [adminId], references: [id])
+  professionalId String       @map("professional_id") @db.Uuid
+  professional   Professional @relation(fields: [professionalId], references: [id])
+  fieldsAccessed String[]     @map("fields_accessed")
+  ipAddress      String       @map("ip_address") @db.VarChar(45)
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  @@map("pii_access_log")
+}

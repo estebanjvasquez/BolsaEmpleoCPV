@@ -1,0 +1,22 @@
+name = "cpv-talent-api"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Custom domain (production): api.talento.camarapetrolera.app — attach via the
+# Cloudflare dashboard once the Worker is deployed (implementation_plan.md §10.3).
+
+# Hyperdrive binding — fronts Supabase's *direct* connection (port 5432), not the
+# Supavisor pooler: Hyperdrive already pools on Workers' behalf, and stacking it in
+# front of Supavisor's transaction-mode pooler ("double pooling") caused intermittent
+# "Connection terminated unexpectedly" errors and hung requests. Caching is disabled
+# since these queries back uniqueness checks that must always read fresh.
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "ef8dcb0183ac49349ebc16c8f5a7bc85"
+
+[vars]
+ENVIRONMENT = "production"
+FRONTEND_URL = "https://talento.camarapetrolera.app"
+# Placeholder sender — must be a domain verified in Resend before it will actually deliver.
+EMAIL_FROM = "no-reply@talento.camarapetrolera.app"
