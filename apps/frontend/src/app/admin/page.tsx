@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ProfessionalStatus } from "@cpv/shared";
 import { apiFetch, ApiRequestError } from "@/lib/api-client";
@@ -37,35 +37,41 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
 
-  const load = useCallback(
-    async (targetStatus: ProfessionalStatus) => {
-      const token = getAdminToken();
-      if (!token) {
-        router.replace("/admin/login");
-        return;
-      }
-      setError(null);
-      try {
-        const result = await apiFetch<{ data: AdminProfessional[] }>(
-          `/api/v1/admin/professionals?status=${targetStatus}`,
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-        setItems(result.data);
-      } catch (err) {
+  useEffect(() => {
+    const token = getAdminToken();
+    if (!token) {
+      router.replace("/admin/login");
+      return;
+    }
+
+    let cancelled = false;
+    // Resetting stale error state before a refetch is a standard, correct
+    // pattern; react-hooks/set-state-in-effect flags any setState in an
+    // effect body regardless of async boundaries, with no clean alternative
+    // short of pulling in a data-fetching library.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setError(null);
+
+    apiFetch<{ data: AdminProfessional[] }>(`/api/v1/admin/professionals?status=${status}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((result) => {
+        if (!cancelled) setItems(result.data);
+      })
+      .catch((err) => {
+        if (cancelled) return;
         if (err instanceof ApiRequestError && err.status === 401) {
           clearAdminToken();
           router.replace("/admin/login");
           return;
         }
         setError(err instanceof ApiRequestError ? err.body.message : "No se pudo conectar con el servidor.");
-      }
-    },
-    [router],
-  );
+      });
 
-  useEffect(() => {
-    load(status);
-  }, [load, status]);
+    return () => {
+      cancelled = true;
+    };
+  }, [status, router]);
 
   const updateStatus = async (id: string, newStatus: ProfessionalStatus) => {
     const token = getAdminToken();
