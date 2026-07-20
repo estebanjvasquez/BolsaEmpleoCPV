@@ -30,8 +30,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files — keep .env.example (template) and .env.production (public
+# NEXT_PUBLIC_* values only, inlined into the client bundle at build time)
 .env*
+!.env.example
+!.env.production
 
 # vercel
 .vercel

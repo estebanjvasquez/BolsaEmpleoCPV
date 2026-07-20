@@ -8,7 +8,8 @@
     "test": "vitest run",
     "deploy": "wrangler deploy",
     "clean": "rm -rf dist .wrangler",
-    "seed:admin": "tsx prisma/seed-admin.ts"
+    "seed:admin": "tsx prisma/seed-admin.ts",
+    "postinstall": "prisma generate --schema prisma/schema.prisma"
   },
   "dependencies": {
     "@cpv/shared": "*",

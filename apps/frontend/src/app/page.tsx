@@ -56,7 +56,7 @@ export default function Home() {
             <Icon name="arrow_forward" className="transition-transform group-hover:translate-x-1" />
           </Link>
           <Link
-            href="/search"
+            href="/company/register"
             className="flex items-center justify-center rounded-full border-2 border-primary-container px-8 py-4 font-headline text-headline-md text-primary-container transition-colors hover:bg-primary-container hover:text-on-primary"
           >
             Soy Empresa
