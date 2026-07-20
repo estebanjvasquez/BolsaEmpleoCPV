@@ -30,6 +30,10 @@ This document outlines the architecture, database design, API contracts, testing
    * **Risk**: Under local and international data protection practices, storing passport/cédula, phone numbers, and job preferences requires explicit, recorded consent.
    * **Mitigation**: Store a cryptographic hash or encrypted version of the document number (cédula/passport) to prevent identity theft in case of database leakage, and enforce a mandatory, timestamped consent checkbox before submission.
 
+7. **Tracking Portal Effectiveness (Hires via Portal)**:
+   * **Risk**: Relying purely on candidate self-reporting to mark themselves as "hired" is prone to high drop-off since candidates lose incentive to log back in once employed.
+   * **Mitigation**: Implement a dual feedback loop: (1) candidates receive a persistent secure token link to update their availability/mark themselves as "hired", (2) companies are prompted on login and via automated email 30 days after initiating a contact request to provide feedback on the hire status, and (3) administrators can manually log confirmed hires in the moderation panel.
+
 ---
 
 ## 2. Proposed Folder Structure (Monorepo Scaffold)
@@ -88,8 +92,10 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 
 -- Enum types
 CREATE TYPE professional_status AS ENUM ('pending', 'approved', 'rejected');
+CREATE TYPE hired_status AS ENUM ('looking', 'hired_via_portal', 'hired_externally');
 CREATE TYPE user_role AS ENUM ('superadmin', 'moderator');
 CREATE TYPE contact_status AS ENUM ('pending_admin', 'sent', 'blocked');
+CREATE TYPE contact_result AS ENUM ('pending', 'hired', 'not_hired', 'in_progress');
 
 -- Catalogs
 CREATE TABLE areas (
@@ -175,6 +181,9 @@ CREATE TABLE professionals (
     immediate_availability BOOLEAN DEFAULT FALSE,
     salary_expectation NUMERIC(12, 2) DEFAULT NULL,         -- monthly amount, USD
     status professional_status DEFAULT 'pending',
+    hired_status hired_status DEFAULT 'looking',
+    hired_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+    availability_token_hash CHAR(64) DEFAULT NULL,          -- persistent token for availability/hired feedback
     editable_until TIMESTAMP WITH TIME ZONE,                -- self-edit window (token valid until this instant)
     edit_token_hash CHAR(64),                               -- HMAC-SHA256 of the one-time self-edit token
     consent_given BOOLEAN DEFAULT FALSE,
@@ -217,6 +226,8 @@ CREATE TABLE contacts_log (
     professional_id UUID NOT NULL REFERENCES professionals(id),
     message TEXT NOT NULL,
     status contact_status DEFAULT 'pending_admin',
+    result contact_result DEFAULT 'pending',
+    feedback_updated_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -414,7 +425,8 @@ All success responses return JSON. Error responses follow a standard structure:
       "job_types_willing": ["Tiempo Completo", "Por Proyecto"],
       "immediate_availability": true,
       "languages": ["Inglés (Avanzado)"],
-      "certifications": ["Certificación Well Control IFC"]
+      "certifications": ["Certificación Well Control IFC"],
+      "created_at": "2026-07-09T13:00:00Z"
     }
   ],
   "meta": {
@@ -522,7 +534,78 @@ Applies the correction. On success the token is single-use invalidated (`edit_to
 { "error": "Gone", "message": "El enlace de edición expiró o ya fue utilizado." }
 ```
 <!-- slide -->
-### 8. Admin Catalog CRUD
+### 8. Professional Availability & Hired Feedback (Public/Token)
+*Allows candidates to mark themselves as hired or update availability via a persistent token link received upon profile approval.*
+
+**GET** `/api/v1/professionals/availability/:token`
+Validates the persistent availability token and returns basic professional info (name, availability status).
+
+**POST** `/api/v1/professionals/availability/:token`
+Updates the availability and hired status. If marked as hired, the profile availability is set to false and is hidden from companies.
+*Request Body:*
+```json
+{
+  "hired_status": "hired_via_portal"
+}
+```
+*Response (200 OK):*
+```json
+{
+  "message": "Estado de disponibilidad actualizado correctamente. ¡Gracias por reportar su contratación!"
+}
+```
+
+<!-- slide -->
+### 9. Company Contact Feedback
+*Companies can log in and submit feedback for professionals they contacted.*
+
+**POST** `/api/v1/companies/feedback/:contact_id`
+*Request Body:*
+```json
+{
+  "result": "hired"
+}
+```
+*Response (200 OK):*
+```json
+{
+  "message": "Feedback registrado con éxito. Gracias por ayudarnos a medir la efectividad de la plataforma."
+}
+```
+
+<!-- slide -->
+### 10. Admin Statistics Dashboard
+*Authenticated via JWT (Admin). Returns aggregated stats for portal effectiveness and usage.*
+
+**GET** `/api/v1/admin/stats`
+*Response (200 OK):*
+```json
+{
+  "total_professionals": 245,
+  "total_companies": 34,
+  "total_contacts": 112,
+  "hires_reported": {
+    "via_portal": 18,
+    "externally": 12,
+    "total": 30
+  },
+  "success_rate_percent": 16.07,
+  "most_requested_areas": [
+    { "area_id": 1, "area_name": "Exploración y Producción", "contacts_count": 56 },
+    { "area_id": 2, "area_name": "Refinación", "contacts_count": 22 }
+  ],
+  "top_contacting_companies": [
+    { "company_id": "bf589d87-...", "company_name": "PetroServicios Zulianos C.A.", "contacts_count": 14 }
+  ],
+  "registrations_over_time": [
+    { "month": "2026-06", "professionals": 120, "companies": 15 },
+    { "month": "2026-07", "professionals": 125, "companies": 19 }
+  ]
+}
+```
+
+<!-- slide -->
+### 11. Admin Catalog CRUD
 *Authenticated via JWT (Admin). Covers areas, subareas, sectors, certifications.*
 
 **POST** `/api/v1/admin/catalogs/areas`
@@ -563,6 +646,12 @@ enum ProfessionalStatus {
   rejected
 }
 
+enum HiredStatus {
+  looking
+  hired_via_portal
+  hired_externally
+}
+
 enum UserRole {
   superadmin
   moderator
@@ -572,6 +661,13 @@ enum ContactStatus {
   pending_admin
   sent
   blocked
+}
+
+enum ContactResult {
+  pending
+  hired
+  not_hired
+  in_progress
 }
 
 model Area {
@@ -678,6 +774,9 @@ model Professional {
   immediateAvailability  Boolean                     @default(false) @map("immediate_availability")
   salaryExpectation      Decimal?                    @map("salary_expectation") @db.Decimal(12, 2)
   status                 ProfessionalStatus          @default(pending)
+  hiredStatus            HiredStatus                 @default(looking) @map("hired_status")
+  hiredAt                DateTime?                   @map("hired_at")
+  availabilityTokenHash  String?                     @map("availability_token_hash") @db.Char(64)
   editableUntil          DateTime?                   @map("editable_until")
   editTokenHash          String?                     @map("edit_token_hash") @db.Char(64)
   consentGiven           Boolean                     @default(false) @map("consent_given")
@@ -729,14 +828,16 @@ model SearchLog {
 }
 
 model ContactLog {
-  id             String        @id @default(uuid()) @db.Uuid
-  companyId      String        @map("company_id") @db.Uuid
-  company        Company       @relation(fields: [companyId], references: [id])
-  professionalId String        @map("professional_id") @db.Uuid
-  professional   Professional  @relation(fields: [professionalId], references: [id])
-  message        String        @db.Text
-  status         ContactStatus @default(pending_admin)
-  createdAt      DateTime      @default(now()) @map("created_at")
+  id                String        @id @default(uuid()) @db.Uuid
+  companyId         String        @map("company_id") @db.Uuid
+  company           Company       @relation(fields: [companyId], references: [id])
+  professionalId    String        @map("professional_id") @db.Uuid
+  professional      Professional  @relation(fields: [professionalId], references: [id])
+  message           String        @db.Text
+  status            ContactStatus @default(pending_admin)
+  result            ContactResult @default(pending)
+  feedbackUpdatedAt DateTime?     @map("feedback_updated_at")
+  createdAt         DateTime      @default(now()) @map("created_at")
 
   @@map("contacts_log")
 }
@@ -934,23 +1035,27 @@ The estimate below is **AI-assisted**, not pure manual coding. The team drives t
 | **BE-2** | Seed script: catalogs (areas/subareas/sectors/certifications) + Venezuela geography. | Backend | 8 | 3 | P0 | BE-1 |
 | **BE-3** | Professional registration: AES-256-GCM encryption + HMAC dedupe + Turnstile + email verification. | Backend | 18 | 10 | P0 | BE-2 |
 | **BE-4** | Company auth (register/login/JWT) + `is_verified` enforcement middleware. | Backend | 12 | 7 | P0 | BE-1 |
-| **BE-5** | Search endpoint: trigram + filters, approved-only, offset pagination, masked fields. | Backend | 12 | 7 | P0 | BE-3 |
+| **BE-5** | Search endpoint: trigram + filters, approved-only, offset pagination, masked fields, and registration date/seniority. | Backend | 12 | 7 | P0 | BE-3 |
 | **BE-6** | Admin moderation + catalog CRUD + `pii_access_log` auditing. | Backend | 14 | 8 | P1 | BE-3, BE-4 |
 | **BE-7** | Contact request + transactional email service (edit token, contact, verification templates). | Backend | 10 | 6 | P1 | BE-3, BE-4 |
 | **BE-8** | Public catalogs endpoint (`GET /api/v1/catalogs`) with caching + self-edit token routes. | Backend | 6 | 3 | P0 | BE-2, BE-3 |
+| **BE-9** | Admin statistics endpoint (`GET /api/v1/admin/stats`) aggregating most requested professions, top contacts, registration rates, and hired ratios. | Backend | 8 | 5 | P1 | BE-6 |
+| **BE-10** | Feedback loop endpoints (candidate availability status update by token + company feedback on contacts). | Backend | 10 | 6 | P1 | BE-7 |
 | **FE-1** | Next.js scaffold (Tailwind, React Hook Form, Zod, typed API client). | Frontend | 12 | 5 | P0 | None |
 | **FE-2** | 4-step wizard UI + step nav + localStorage + catalogs integration. | Frontend | 24 | 14 | P0 | FE-1, BE-8 |
 | **FE-3** | Wizard ↔ API integration, error mapping, self-edit page. | Frontend | 10 | 6 | P0 | FE-2, BE-3 |
-| **FE-4** | Company login + search dashboard (filters + result cards + contact modal). | Frontend | 18 | 12 | P1 | FE-1, BE-5 |
+| **FE-4** | Company login + search dashboard (filters + registration seniority + contact modal + hiring feedback prompts). | Frontend | 18 | 12 | P1 | FE-1, BE-5 |
 | **FE-5** | Admin dashboard (moderation queue, catalog editor). | Frontend | 14 | 9 | P1 | FE-1, BE-6 |
-| **QA-1** | Test env (Jest/Vitest) + unit tests for validators/models. | QA | 8 | 5 | P0 | BE-1, FE-1 |
+| **FE-6** | Admin statistics dashboard view (charts, KPI cards, visual indicators). | Frontend | 12 | 8 | P1 | FE-5 |
+| **FE-7** | Feedback interfaces: candidate availability/hired landing page (secure token). | Frontend | 8 | 5 | P1 | FE-3 |
+| **QA-1** | Test env (Vitest) + unit tests for validators/models. | QA | 8 | 5 | P0 | BE-1, FE-1 |
 | **QA-2** | API contract/integration tests + regression suite. | QA | 14 | 8 | P0 | BE-3, BE-5 |
-| **QA-3** | Playwright E2E smoke of the 3 critical flows (register, search, moderate). | QA | 8 | 4 | P1 | FE-3, FE-4 |
-| **TOTAL** | | | **239** | **131** | | |
+| **QA-3** | Playwright E2E smoke of the 3 critical flows (register, search, moderate, stats/feedback). | QA | 10 | 5 | P1 | FE-3, FE-4 |
+| **TOTAL** | | | **281** | **155** | | |
 
 * **Priority Key**: P0 = Critical (basic flow), P1 = Important.
 * **Effective saving**: ~**45%** fewer hours vs. the conventional estimate **while delivering a wider scope**, with no reduction in security or QA depth (those tasks are deliberately discounted the least). At a competitive blended rate this is the lever that makes the final quote materially cheaper.
-* **Calendar**: with 2 engineers (1 BE-leaning, 1 FE-leaning) + part-time QA, 131 h ≈ **2 working weeks** end-to-end, including the deployment runbook in Section 10.
+* **Calendar**: with 2 engineers (1 BE-leaning, 1 FE-leaning) + part-time QA, 155 h ≈ **2.5 working weeks** end-to-end, including the deployment runbook in Section 10.
 
 ---
 
@@ -983,59 +1088,59 @@ The estimate below is **AI-assisted**, not pure manual coding. The team drives t
 
 ## 10. Deployment Plan & Hosting Strategy
 
-### 10.1 Current domain & why the shared-Apache host cannot run this app
+### 10.1 Domain strategy using talento.camarapetrolera.app
 
-Verified DNS for **camarapetrolera.org** (July 2026):
-* Nameservers `matrix1/matrix2.adclichosting.com` → DNS managed by the current shared-hosting provider.
-* Root + `www` → `51.81.48.12` (Apache on shared hosting).
-* MX → **Google Workspace** (`aspmx.l.google.com`) — institutional email must be preserved.
-
-The shared Apache host is fine for the current brochure site but **cannot host the Talent Platform**: no Node.js/Workers runtime, no PostgreSQL with `pg_trgm`, and no control over edge TLS/WAF/rate-limiting or CI/CD.
-
-**Decision: do not migrate or disrupt the existing site or its email.** The brochure site stays on Apache; the Talent Platform ships as a **separate application on Cloudflare, exposed on a subdomain**. Zero risk to the current site.
+The domain **talento.camarapetrolera.app** is already registered and loaded in Cloudflare. This is the ideal option because:
+* It completely isolates the Talent Platform from the existing **camarapetrolera.org** infrastructure.
+* **Zero risk** to the main brochure website (Apache host `51.81.48.12`) or institutional emails on **Google Workspace** (`aspmx.l.google.com`).
+* No need to change nameservers or modify DNS zone files for `camarapetrolera.org`.
+* Since the `.app` domain is already in Cloudflare, we can leverage Cloudflare Pages, Workers, WAF, rate-limiting, and Turnstile natively without extra DNS configuration delay.
 
 ### 10.2 Target architecture — Cloudflare + Supabase
 
 ```
-                          ┌───────────────────────────────────────┐
-   DNS (Cloudflare zone)  │ camarapetrolera.org  (A 51.81.48.12)   │─► Existing Apache site (UNCHANGED)
-                          │ MX → Google Workspace                  │─► Institutional email (UNCHANGED)
-                          │                                        │
-                          │ talento.camarapetrolera.org  → Pages   │─► Next.js frontend  (Cloudflare Pages)
-                          │ api.camarapetrolera.org      → Worker  │─► Hono API          (Cloudflare Workers)
-                          └───────────────────────────────────────┘
-                                        │  Hyperdrive (connection cache/pooling)
-                                        ▼
-                              Supabase  (managed PostgreSQL: pg_trgm, arrays, enums) + daily backups
-                                        │
-                              Transactional email (Resend / Brevo)
+                           ┌────────────────────────────────────────┐
+   DNS (camarapetrolera.org) │ camarapetrolera.org  (A 51.81.48.12)   │─► Existing Apache site (UNCHANGED)
+   (EXTERNAL DNS)            │ MX → Google Workspace                  │─► Institutional email (UNCHANGED)
+                           └────────────────────────────────────────┘
+                           
+                           ┌────────────────────────────────────────┐
+   DNS (Cloudflare zone)     │ talento.camarapetrolera.app   → Pages   │─► Next.js frontend  (Cloudflare Pages)
+   (camarapetrolera.app or   │ api.talento.camarapetrolera.app → Worker│─► Hono API          (Cloudflare Workers)
+    talento.camarapetrolera.app)                                    │
+                           └────────────────────────────────────────┘
+                                         │  Hyperdrive (connection cache/pooling)
+                                         ▼
+                               Supabase  (managed PostgreSQL: pg_trgm, arrays, enums) + daily backups
+                                         │
+                               Transactional email (Resend / Brevo)
 ```
 
-* **Frontend** (`talento.camarapetrolera.org`): **Cloudflare Pages** running the Next.js App Router (via the OpenNext Cloudflare adapter). Global CDN, per-PR preview deploys, automatic HTTPS.
-* **Backend API** (`api.camarapetrolera.org`): **Cloudflare Workers** with the **Hono** framework (Express-like ergonomics, native to the Workers runtime). Controllers/services/validation port over 1:1 from the Express design.
+* **Frontend** (`talento.camarapetrolera.app`): **Cloudflare Pages** running the Next.js App Router (via the OpenNext Cloudflare adapter). Global CDN, per-PR preview deploys, automatic HTTPS.
+* **Backend API** (`api.talento.camarapetrolera.app`): **Cloudflare Workers** with the **Hono** framework. Custom domain attached in Cloudflare to route API traffic directly to the Worker.
 * **Database**: **Supabase** — managed PostgreSQL, so the entire schema (Section 3) and Prisma model (Section 5) are used **unchanged**: `pg_trgm` trigram search, `TEXT[]` arrays, enums, partial indexes all supported.
 * **DB connectivity from Workers**: **Cloudflare Hyperdrive** in front of Supabase's **Supavisor pooler**, using Prisma's driver adapter (`@prisma/adapter-pg` with `driverAdapters` enabled). Two connection strings are needed:
   * **Runtime queries** → Supavisor *transaction* pooler (port `6543`), fronted by Hyperdrive.
   * **`prisma migrate`** → Supabase *direct/session* connection (port `5432`).
-* **Anti-abuse**: **Turnstile** (CAPTCHA) + **Cloudflare WAF rate-limiting rules** at the edge (replaces app-level `express-rate-limit`), plus a defensive limiter inside the Worker.
-* **Transactional email**: **Resend** or **Brevo** (free tier). Configure SPF/DKIM/DMARC as a **subdomain sender** (e.g. `mail.camarapetrolera.org`) so it does **not** interfere with the existing Google Workspace SPF/DKIM.
+* **Anti-abuse**: **Turnstile** (CAPTCHA) + **Cloudflare WAF rate-limiting rules** at the edge, plus a defensive limiter inside the Worker.
+* **Transactional email**: **Resend** or **Brevo** (free tier). Configure SPF/DKIM/DMARC as a sender directly on the `talento.camarapetrolera.app` zone (e.g. `mail.talento.camarapetrolera.app` or `talento.camarapetrolera.app`), keeping it completely isolated from the existing Google Workspace records on `camarapetrolera.org`.
 * **Secrets**: encryption key + HMAC pepper + JWT secret + email API key stored as **Workers/Pages secrets** (Wrangler `secret put`) — never in git.
 
-### 10.3 DNS setup — move the zone to Cloudflare
+### 10.3 DNS setup — cloudflare configuration
 
-The domain's DNS is moved to **Cloudflare** by changing the nameservers at the registrar. This is the prerequisite for attaching the Pages **and** Workers custom domains (`talento.` / `api.`) and for edge WAF/rate-limiting.
+Since the domain `talento.camarapetrolera.app` is already active in Cloudflare, setting up DNS is extremely straightforward:
 
-* **Non-disruptive migration**: before changing nameservers, **import every existing record into Cloudflare** — the root `A 51.81.48.12`, `www`, and the Google Workspace `MX`/SPF/DKIM. When the zone is activated, the current Apache site and institutional email keep resolving exactly as before.
-* **Verification**: confirm the imported zone answers correctly (site loads, email flows) *before* flipping the nameservers, and keep the current DNS host reachable during propagation as a rollback path.
-* Turnstile does not depend on this, but consolidating DNS in Cloudflare gives a single control plane for TLS, WAF, rate-limiting and the app subdomains.
+* **No delegation required**: We do not touch registrar nameservers.
+* **Custom Domains**: In the Cloudflare Pages settings, we associate `talento.camarapetrolera.app` as a custom domain (Cloudflare automatically adds the corresponding CNAME record). In the Worker settings, we associate `api.talento.camarapetrolera.app` as a custom domain.
+* **Security & Routing**: Cloudflare automatically provisions SSL/TLS certificates and applies WAF/Turnstile settings at the zone edge.
 
 ### 10.4 Environments
 
 | Environment | Frontend (Pages) | Backend (Workers) | Database | Purpose |
 | :--- | :--- | :--- | :--- | :--- |
 | **Preview** | Pages preview URL (per PR) | Workers preview | Supabase branch/schema | Review each PR in isolation |
-| **Staging** | `staging.talento.camarapetrolera.org` | `api-staging.camarapetrolera.org` | Supabase `staging` | QA + client UAT |
-| **Production** | `talento.camarapetrolera.org` | `api.camarapetrolera.org` | Supabase `production` | Live |
+| **Staging** | `staging.talento.camarapetrolera.app` | `api-staging.camarapetrolera.app` | Supabase `staging` | QA + client UAT |
+| **Production** | `talento.camarapetrolera.app` | `api.talento.camarapetrolera.app` | Supabase `production` | Live |
 
 ### 10.5 CI/CD pipeline (GitHub Actions → Cloudflare)
 
@@ -1046,14 +1151,14 @@ The domain's DNS is moved to **Cloudflare** by changing the nameservers at the r
 
 ### 10.6 Go-live runbook (zero downtime to the old site & email)
 
-1. **DNS**: add the zone to Cloudflare, import every existing record, verify the Apache site + Google email still resolve **before** changing nameservers.
+1. **DNS check**: Confirm that `talento.camarapetrolera.app` is active in the Cloudflare dashboard.
 2. Provision the Supabase **production** project; enable `pg_trgm`/`uuid-ossp`; run `prisma migrate deploy` + seed catalogs. Note the direct (5432) and pooler (6543) URLs.
 3. Create a **Hyperdrive** config pointing at the Supabase pooler; bind it to the Worker.
-4. Deploy the Worker (`api.camarapetrolera.org`); set secrets (encryption key, HMAC pepper, JWT secret, Turnstile secret, email API key).
-5. Deploy Pages (`talento.camarapetrolera.org`); set `NEXT_PUBLIC_API_URL` and the Turnstile site key.
-6. Configure email DNS on the **`mail.` subdomain** (SPF/DKIM/DMARC) so Google Workspace is untouched; send test emails through every template.
+4. Deploy the Worker (`api.talento.camarapetrolera.app`); set secrets (encryption key, HMAC pepper, JWT secret, Turnstile secret, email API key).
+5. Deploy Pages (`talento.camarapetrolera.app`); set `NEXT_PUBLIC_API_URL` and the Turnstile site key.
+6. Configure email DNS in the Cloudflare zone (SPF/DKIM/DMARC) using `mail.talento.camarapetrolera.app` as the sender subdomain; send test emails through every template.
 7. Enable Cloudflare **Always Use HTTPS**, HSTS, WAF managed rules, and rate-limit rules mirroring the app limits (3 registrations/IP/hour, 100 searches/company/hour).
-8. Add a "Bolsa de Talento" link from the existing Apache site to `talento.camarapetrolera.org`.
+8. Add a "Bolsa de Talento" link from the existing Apache site on `camarapetrolera.org` pointing to `https://talento.camarapetrolera.app`.
 9. Smoke-test the three critical flows in production; enable uptime + error monitoring.
 
 ### 10.7 Backups, monitoring & operations

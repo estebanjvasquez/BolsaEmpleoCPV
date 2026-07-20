@@ -12,9 +12,9 @@
 
 Proponemos desarrollar una **plataforma web de talento profesional** para la Cámara Petrolera de Venezuela: un espacio donde los profesionales del sector petrolero registran su perfil una sola vez, y las empresas afiliadas a la CPV pueden **buscar y contactar** ese talento de forma segura y controlada.
 
-El proyecto se construye con un enfoque de **desarrollo asistido por Inteligencia Artificial**, lo que reduce significativamente las horas de trabajo (y por tanto el costo) **sin sacrificar calidad, seguridad ni acabado profesional**. El resultado es una propuesta económicamente muy competitiva: la plataforma completa (MVP) se entrega en aproximadamente **131 horas de trabajo especializado (~2 semanas)**, con una **inversión total de USD $1.965 (pago único)** —casi la mitad de lo que costaría un desarrollo tradicional— y un costo de operación mensual que puede iniciar en **prácticamente $0** apoyándose en planes gratuitos de servicios en la nube.
+El proyecto se construye con un enfoque de **desarrollo asistido por Inteligencia Artificial**, lo que reduce significativamente las horas de trabajo (y por tanto el costo) **sin sacrificar calidad, seguridad ni acabado profesional**. El resultado es una propuesta económicamente muy competitiva: la plataforma completa (MVP) se entrega en aproximadamente **155 horas de trabajo especializado (~2.5 semanas)**, con una **inversión total de USD $2.325 (pago único)** —casi la mitad de lo que costaría un desarrollo tradicional— y un costo de operación mensual que puede iniciar en **prácticamente $0** apoyándose en planes gratuitos de servicios en la nube.
 
-Un punto clave: **el sitio web actual de la CPV no se toca ni se pone en riesgo.** La nueva plataforma se publica en un subdominio (por ejemplo `talento.camarapetrolera.org`) de manera totalmente independiente.
+Un punto clave: **el sitio web actual de la CPV no se toca ni se pone en riesgo.** La nueva plataforma se publica en el dominio `talento.camarapetrolera.app` (ya registrado y cargado en Cloudflare) de manera totalmente independiente.
 
 ---
 
@@ -37,17 +37,26 @@ Se registra a través de un **formulario guiado de 4 pasos**, simple e intuitivo
 3. **Competencias y preferencias** (formación, idiomas, certificaciones, disponibilidad, expectativa salarial).
 4. **Revisión y consentimiento** — revisa un resumen de su perfil y acepta los términos de privacidad antes de enviar.
 
-El registro es gratuito y el perfil queda **pendiente de revisión** por la CPV antes de hacerse visible.
+El registro es gratuito y el perfil queda **pendiente de revisión** por la CPV. Tras su aprobación, el profesional recibe un correo con un **enlace/token persistente y seguro** que le permite:
+- Gestionar y corregir los datos de su perfil.
+- Actualizar su disponibilidad en cualquier momento.
+- Marcar de forma sencilla si ha sido **contratado** (especificando si fue gracias al portal o por vía externa) para alimentar las métricas de efectividad de la CPV.
 
 ### 🏢 La empresa afiliada
 - Se registra y, una vez **aprobada por la CPV**, accede a un **buscador de profesionales** con filtros (área, especialidad, experiencia, ubicación, palabra clave).
-- **Nunca ve directamente** el correo ni el teléfono del profesional. Si le interesa un perfil, pulsa **"Solicitar contacto"**, y el sistema gestiona el acercamiento de forma controlada. Esto protege a los profesionales de spam y de la extracción masiva de datos.
+- En los resultados de búsqueda se muestra la **antigüedad del registro profesional** (para identificar candidatos recientemente actualizados o registrados).
+- **Nunca ve directamente** el correo ni el teléfono del profesional. Si le interesa un perfil, pulsa **"Solicitar contacto"**, y el sistema gestiona el acercamiento. 30 días después, el sistema solicitará a la empresa un feedback rápido (prompt simple al iniciar sesión o por email) indicando si concretaron la contratación.
 
 ### 🛡️ El administrador de la CPV
 Un panel privado donde la CPV:
 - **Modera** los perfiles de profesionales (aprobar / rechazar).
 - **Aprueba** a las empresas que solicitan acceso (verificando que sean miembros legítimos).
 - **Gestiona los catálogos** del sistema (áreas, especialidades, sectores, certificaciones).
+- **Visualiza Estadísticas e Indicadores Gerenciales:**
+  - Tipos de profesionales más solicitados (basado en solicitudes de contacto).
+  - Empresas que realizan más contactos.
+  - Indicadores de efectividad del portal (cantidad de profesionales contratados gracias al portal vs. de forma externa, tasa de conversión de contactos).
+  - Distribución de registros por antigüedad, área y ubicación geográfica.
 - Mantiene el control y la trazabilidad de quién accede a la información sensible.
 
 ---
@@ -87,9 +96,9 @@ La diferencia central de esta propuesta es el **método de trabajo**. Empleamos 
 
 **¿Qué significa esto para la CPV?**
 
-- **Menos horas → menor costo.** Un desarrollo tradicional de este alcance rondaría las **239 horas**; con desarrollo asistido por IA lo entregamos en **~131 horas** (≈ **45% menos**).
+- **Menos horas → menor costo.** Un desarrollo tradicional de este alcance rondaría las **281 horas**; con desarrollo asistido por IA lo entregamos en **~155 horas** (≈ **45% menos**).
 - **Sin sacrificar calidad.** La IA **no reemplaza** el criterio de ingeniería en lo crítico: seguridad, cifrado, autenticación y experiencia de usuario se revisan y validan manualmente. Por eso esas áreas se optimizan menos: la calidad se protege donde importa.
-- **Mayor alcance por el mismo esfuerzo.** Incluimos funciones adicionales (verificación de correo, auto-corrección de perfil, auditoría de accesos) que en un esquema tradicional encarecerían el proyecto.
+- **Mayor alcance por el mismo esfuerzo.** Incluimos funciones adicionales (estadísticas gerenciales, bucle de feedback automatizado para contratación, antigüedad del perfil, verificación de correo, auto-corrección, auditoría de accesos) que en un esquema tradicional encarecerían el proyecto.
 
 > **En resumen:** la IA nos permite ofrecer un producto **más completo, más rápido y más económico**, manteniendo estándares profesionales de seguridad y calidad.
 
@@ -100,11 +109,13 @@ La diferencia central de esta propuesta es el **método de trabajo**. Empleamos 
 **Incluido en esta propuesta:**
 - ✅ Formulario guiado de registro de profesionales (4 pasos) con guardado de progreso.
 - ✅ Registro seguro con cifrado de datos sensibles y verificación de correo.
-- ✅ Enlace de auto-corrección del perfil por tiempo limitado (sin necesidad de crear usuario/clave).
+- ✅ Enlace de auto-corrección y actualización de disponibilidad por token persistente (sin necesidad de crear usuario/clave).
 - ✅ Registro e inicio de sesión de empresas.
-- ✅ Buscador de profesionales con filtros y paginación (solo perfiles aprobados).
+- ✅ Buscador de profesionales con filtros, paginación e indicador de **antigüedad del registro** (solo perfiles aprobados).
 - ✅ Solicitud de contacto controlada (sin exponer datos personales).
-- ✅ Panel administrativo de la CPV: moderación de perfiles y empresas, gestión de catálogos, auditoría.
+- ✅ Bucle de retroalimentación de contratación (encuesta simple a empresas a los 30 días del contacto y actualización de disponibilidad de profesionales).
+- ✅ Panel administrativo de la CPV: moderación de perfiles y empresas, gestión de catálogos, auditoría de PII.
+- ✅ **Estadísticas y Dashboard Gerencial** para la administración de la CPV (profesionales más solicitados, empresas activas, indicadores de contratación y efectividad del portal).
 - ✅ Protección anti-spam (Turnstile + límites de uso) y notificaciones por correo.
 - ✅ Pruebas automatizadas de los flujos críticos.
 
@@ -112,34 +123,26 @@ La diferencia central de esta propuesta es el **método de trabajo**. Empleamos 
 - ⬜ Aplicación móvil nativa (la web ya es responsiva).
 - ⬜ Mensajería interna entre empresa y profesional dentro de la plataforma.
 - ⬜ Cobros / membresías en línea.
-- ⬜ Reportes y estadísticas avanzadas.
 - ⬜ Autenticación de dos factores para administradores (recomendada como mejora posterior).
 
 ---
 
 ## 8. Despliegue y uso del dominio
 
-Verificamos la configuración actual del dominio **camarapetrolera.org**:
-- El sitio web actual está alojado en un **hosting compartido con Apache**.
-- El correo institucional funciona sobre **Google Workspace**.
-- El DNS lo administra el proveedor de hosting actual.
+La plataforma utilizará el dominio **talento.camarapetrolera.app**, el cual ya está registrado y cargado en Cloudflare.
 
-**Sobre su pregunta del subdominio — respuesta clara:**
+**Beneficios de esta decisión:**
 
-> ✅ **Sí se puede usar un subdominio del dominio actual** (por ejemplo `talento.camarapetrolera.org`) para publicar la plataforma, alojada en **Cloudflare + Supabase**, sin afectar el sitio ni el correo actuales.
-
-**Cómo se hace:** se lleva la administración del DNS del dominio a **Cloudflare** (se cambian los "nameservers"). Esto habilita la web, el servidor de la aplicación y el cortafuegos (WAF), todo dentro de la red de Cloudflare, y permite publicar los subdominios `talento.` y `api.`.
-
-- Es un cambio **no invasivo**: antes de activarlo se **copian a Cloudflare todos los registros actuales** (el sitio Apache y el correo de Google Workspace), de modo que **siguen funcionando exactamente igual, sin interrupciones**.
-- Se **verifica que todo resuelve correctamente** (el sitio carga y el correo fluye) **antes** de completar el cambio, dejando el DNS anterior disponible como respaldo durante la propagación.
-- Beneficio adicional: la CPV queda con un **único panel** para seguridad, certificados HTTPS y protección anti-ataques.
+* **Aislamiento total y seguridad:** Al utilizar un dominio independiente (`.app` en lugar de `.org`), el sitio web actual (`camarapetrolera.org`) y el correo institucional en Google Workspace permanecen **100% aislados y protegidos**. No existe ningún riesgo de caída o mala configuración.
+* **Sin cambios de DNS en el dominio principal:** No es necesario migrar los DNS ni cambiar los servidores de nombres (nameservers) de `camarapetrolera.org`.
+* **Configuración inmediata:** Dado que el dominio `talento.camarapetrolera.app` ya se encuentra activo en Cloudflare, la integración con Cloudflare Pages y Workers es inmediata y directa.
 
 **Arquitectura de despliegue propuesta:**
-- `camarapetrolera.org` → sitio actual y correo Google Workspace (**sin cambios**).
-- `talento.camarapetrolera.org` → interfaz de la plataforma (**Cloudflare Pages**).
-- `api.camarapetrolera.org` → servidor de la aplicación (**Cloudflare Workers**).
-- Base de datos **PostgreSQL en Supabase** (cuenta ya existente del cliente), conectada de forma acelerada mediante **Cloudflare Hyperdrive**, con **copias de seguridad diarias** (plan Pro de Supabase).
-- Correos de la plataforma enviados con un proveedor transaccional (Resend/Brevo) desde un **subdominio de correo propio**, configurado para **no interferir** con el Google Workspace actual.
+* `camarapetrolera.org` → sitio actual y correo Google Workspace (**sin ningún cambio ni intervención de DNS**).
+* `talento.camarapetrolera.app` → interfaz de la plataforma (**Cloudflare Pages**).
+* `api.talento.camarapetrolera.app` → servidor de la aplicación/API (**Cloudflare Workers**).
+* Base de datos **PostgreSQL en Supabase** (cuenta ya existente del cliente), conectada de forma acelerada mediante **Cloudflare Hyperdrive**, con **copias de seguridad diarias** (plan Pro de Supabase).
+* Correos de la plataforma enviados con un proveedor transaccional (Resend/Brevo) desde el dominio `talento.camarapetrolera.app` (ej. `mail.talento.camarapetrolera.app`), configurado en Cloudflare para **no interferir** con el correo corporativo actual.
 
 ---
 
@@ -160,10 +163,10 @@ Dado que se manejan datos personales de profesionales (cédula, teléfono), la s
 
 | Semana | Actividades |
 | :--- | :--- |
-| **Semana 1** | Infraestructura, base de datos, registro de profesionales, autenticación de empresas, base del panel administrativo. |
-| **Semana 2** | Buscador de empresas, panel de moderación CPV, correos, pruebas automatizadas, despliegue y puesta en marcha. |
+| **Semana 1** | Infraestructura, base de datos, flujos de registro de profesionales, tokens de disponibilidad, autenticación de empresas y base del panel administrativo. |
+| **Semanas 2 - 3** | Buscador de empresas con antigüedad, bucle de feedback automatizado, panel de moderación, desarrollo de estadísticas y dashboard gerencial, pruebas automatizadas, despliegue y puesta en marcha. |
 
-**Entrega estimada del MVP: ~2 semanas** desde el inicio (equipo de 2 desarrolladores + control de calidad), incluyendo la publicación en el subdominio.
+**Entrega estimada del MVP: ~2.5 semanas** desde el inicio (equipo de 2 desarrolladores + control de calidad), incluyendo la publicación en el dominio principal `.app`.
 
 ---
 
@@ -175,27 +178,27 @@ Tarifa aplicada: **USD $15 / hora**.
 
 | Módulo | Descripción | Horas | Subtotal |
 | :--- | :--- | :---: | ---: |
-| Infraestructura y despliegue | Supabase + Hyperdrive, entornos, CI/CD, publicación en Cloudflare y el subdominio. | 17 | $255 |
+| Infraestructura y despliegue | Supabase + Hyperdrive, entornos, CI/CD, publicación en Cloudflare con dominio custom. | 17 | $255 |
 | Base técnica compartida | Estructura del servidor (Hono/Workers) y de la interfaz, validaciones y tipos comunes. | 12 | $180 |
-| Registro de profesionales | Formulario guiado, registro cifrado, verificación de correo, auto-corrección. | 36 | $540 |
-| Portal de búsqueda (empresas) | Registro/login, buscador con filtros, solicitud de contacto, notificaciones. | 32 | $480 |
-| Panel administrativo CPV | Moderación de perfiles y empresas, gestión de catálogos, auditoría. | 17 | $255 |
-| Calidad y pruebas | Pruebas unitarias, de integración y de extremo a extremo. | 17 | $255 |
-| **Total** | | **131 h** | **$1.965** |
+| Registro e interacción de profesionales | Formulario guiado, cifrado de datos, verificación de correo, auto-corrección y bucle de feedback de disponibilidad por token. | 42 | $630 |
+| Portal de búsqueda (empresas) | Registro/login, buscador con filtros y visualización de antigüedad, solicitud de contacto y feedback de contratación. | 37 | $555 |
+| Panel administrativo CPV y Estadísticas | Moderación de perfiles/empresas, catálogos, auditoría de accesos y dashboard de estadísticas gerenciales. | 30 | $450 |
+| Calidad y pruebas | Pruebas unitarias, de integración, bucle de feedback y extremo a extremo. | 17 | $255 |
+| **Total** | | **155 h** | **$2.325** |
 
-> ### 💰 Inversión total de desarrollo: **USD $1.965** (pago único, MVP completo)
+> ### 💰 Inversión total de desarrollo: **USD $2.325** (pago único, MVP completo)
 
 **El valor del enfoque con IA — comparativo:**
 
 | Enfoque | Horas | Costo a $15/h |
 | :--- | :---: | ---: |
-| Desarrollo tradicional (manual) | 239 h | $3.585 |
-| **Desarrollo asistido por IA (esta propuesta)** | **131 h** | **$1.965** |
-| **Ahorro para la CPV** | **–108 h** | **–$1.620 (≈ 45%)** |
+| Desarrollo tradicional (manual) | 281 h | $4.215 |
+| **Desarrollo asistido por IA (esta propuesta)** | **155 h** | **$2.325** |
+| **Ahorro para la CPV** | **–126 h** | **–$1.890 (≈ 45%)** |
 
 El mismo alcance, con estándares profesionales de seguridad y calidad, por **casi la mitad del costo** de un desarrollo convencional.
 
-**Forma de pago sugerida:** 50% al inicio ($982,50) y 50% contra entrega del MVP ($982,50). *(Ajustable según acuerdo.)*
+**Forma de pago sugerida:** 50% al inicio ($1.162,50) y 50% contra entrega del MVP ($1.162,50). *(Ajustable según acuerdo.)*
 
 ### Costo de operación mensual (infraestructura en la nube)
 
@@ -225,8 +228,8 @@ Tras la entrega del MVP, ofrecemos (opcional):
 
 1. **Revisión y aprobación** de esta propuesta por parte de la CPV.
 2. **Confirmación de decisiones clave** (ver documento técnico anexo): método de auto-corrección de perfiles, flujo de contacto, política de retención, etc.
-3. **Traslado del DNS a Cloudflare** (importando los registros actuales del sitio y del correo) y acceso al registrador del dominio para el cambio de nameservers.
-4. **Inicio del desarrollo** (arranque del cronograma de 2 semanas).
+3. **Configuración del dominio custom** `talento.camarapetrolera.app` en la cuenta de Cloudflare existente.
+4. **Inicio del desarrollo** (arranque del cronograma de 2.5 semanas).
 
 ---
 
