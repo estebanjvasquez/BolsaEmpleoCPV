@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { companyRegistrationSchema, type CompanyRegistrationInput } from "@cpv/shared";
 import { apiFetch, ApiRequestError } from "@/lib/api-client";
+import { PasswordInput } from "@/components/password-input";
 
 const inputClass =
   "w-full rounded border border-outline-variant bg-surface-container-lowest px-4 py-2.5 font-body text-body-md text-on-surface focus:border-primary-container focus:outline-none focus:ring-1 focus:ring-primary-container";
@@ -93,7 +94,7 @@ export default function CompanyRegisterPage() {
         </div>
         <div>
           <label className={labelClass}>Contraseña</label>
-          <input type="password" className={inputClass} {...register("password")} />
+          <PasswordInput className={inputClass} {...register("password")} />
           {errors.password && <p className={errorClass}>{errors.password.message}</p>}
         </div>
 

@@ -84,8 +84,10 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    if (tab === "companies") loadCompanies();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (tab === "companies") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      loadCompanies();
+    }
   }, [tab]);
 
   const approveCompany = async (id: string) => {
