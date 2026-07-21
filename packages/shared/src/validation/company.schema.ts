@@ -17,3 +17,10 @@ export const companyLoginSchema = z.object({
 
 export type CompanyRegistrationInput = z.infer<typeof companyRegistrationSchema>;
 export type CompanyLoginInput = z.infer<typeof companyLoginSchema>;
+
+/** Mirrors POST /api/v1/companies/feedback/:contact_id — implementation_plan.md §4.9 */
+export const companyFeedbackSchema = z.object({
+  result: z.enum(["hired", "not_hired", "in_progress"]),
+});
+
+export type CompanyFeedbackInput = z.infer<typeof companyFeedbackSchema>;

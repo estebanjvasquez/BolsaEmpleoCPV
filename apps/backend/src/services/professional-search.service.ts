@@ -16,6 +16,10 @@ interface SearchResult {
 function buildWhere(query: ProfessionalSearchQuery): Prisma.ProfessionalWhereInput {
   return {
     status: "approved",
+    // Hidden from companies once hired, whether self-reported (§4.8) or
+    // company-reported (§4.9) — see professional-availability.service.ts /
+    // company-feedback.service.ts.
+    hiredStatus: "looking",
     ...(query.area_id !== undefined && { areaId: query.area_id }),
     ...(query.subarea_id !== undefined && { subareaId: query.subarea_id }),
     ...(query.min_experience !== undefined && { experienceYears: { gte: query.min_experience } }),

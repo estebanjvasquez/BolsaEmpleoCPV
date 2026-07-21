@@ -8,6 +8,8 @@ import { zodFieldErrors } from "../lib/zod-errors";
 import { adminAuthMiddleware, type AdminAuthVariables } from "../middleware/admin-auth";
 import { loginAdmin } from "../services/admin-auth.service";
 import { listProfessionalsByStatus, updateProfessionalStatus } from "../services/admin-moderation.service";
+import { getAdminStats } from "../services/admin-stats.service";
+import { listCompanies, verifyCompany } from "../services/admin-company.service";
 import {
   createArea,
   createCertification,
@@ -75,7 +77,36 @@ adminController.patch("/professionals/:id/status", adminAuthMiddleware, async (c
   }
 
   const prisma = createPrismaClient(c.env);
-  const result = await updateProfessionalStatus(c.req.param("id"), parsed.data.status, prisma);
+  const result = await updateProfessionalStatus(c.req.param("id"), parsed.data.status, { prisma, env: c.env });
+  return c.json(result);
+});
+
+adminController.get("/stats", adminAuthMiddleware, async (c) => {
+  const prisma = createPrismaClient(c.env);
+  return c.json(await getAdminStats(prisma));
+});
+
+// --- Company verification --------------------------------------------------
+
+const companiesQuerySchema = z.object({
+  verified: z.enum(["true", "false"]).optional(),
+});
+
+adminController.get("/companies", adminAuthMiddleware, async (c) => {
+  const parsed = companiesQuerySchema.safeParse(c.req.query());
+  if (!parsed.success) {
+    throw new HttpError(400, "Bad Request", "Validation failed", zodFieldErrors(parsed.error));
+  }
+
+  const prisma = createPrismaClient(c.env);
+  const verified = parsed.data.verified === undefined ? undefined : parsed.data.verified === "true";
+  const data = await listCompanies(verified, prisma);
+  return c.json({ data });
+});
+
+adminController.patch("/companies/:id/verify", adminAuthMiddleware, async (c) => {
+  const prisma = createPrismaClient(c.env);
+  const result = await verifyCompany(c.req.param("id"), prisma);
   return c.json(result);
 });
 

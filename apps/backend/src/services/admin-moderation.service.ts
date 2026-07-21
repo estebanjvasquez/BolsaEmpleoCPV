@@ -1,6 +1,9 @@
 import type { PrismaClient, ProfessionalStatus } from "@prisma/client";
+import type { Env } from "../config/env";
 import { HttpError } from "../lib/http-error";
 import { decrypt } from "./crypto/encryption";
+import { generateToken, sha256Hex } from "./crypto/hmac";
+import { sendAvailabilityEmail } from "./email";
 
 interface ListDeps {
   prisma: PrismaClient;
@@ -60,15 +63,45 @@ export async function listProfessionalsByStatus(status: ProfessionalStatus, { pr
   return data;
 }
 
+interface UpdateStatusDeps {
+  prisma: PrismaClient;
+  env: Env;
+}
+
+/**
+ * Updates moderation status. The first time a profile is approved, mints a
+ * persistent availability token (implementation_plan.md §4.8) and emails it
+ * — subsequent approvals (e.g. after a rejection is reversed) reuse the
+ * existing token rather than invalidating a link the candidate may have saved.
+ */
 export async function updateProfessionalStatus(
   id: string,
   status: ProfessionalStatus,
-  prisma: PrismaClient,
+  { prisma, env }: UpdateStatusDeps,
 ): Promise<{ id: string; status: ProfessionalStatus }> {
-  const existing = await prisma.professional.findUnique({ where: { id }, select: { id: true } });
+  const existing = await prisma.professional.findUnique({
+    where: { id },
+    select: { id: true, firstName: true, email: true, availabilityTokenHash: true },
+  });
   if (!existing) {
     throw new HttpError(404, "Not Found", "Profesional no encontrado");
   }
 
-  return prisma.professional.update({ where: { id }, data: { status }, select: { id: true, status: true } });
+  const mintAvailabilityToken = status === "approved" && !existing.availabilityTokenHash;
+  const availabilityToken = mintAvailabilityToken ? generateToken() : null;
+
+  const updated = await prisma.professional.update({
+    where: { id },
+    data: {
+      status,
+      ...(availabilityToken && { availabilityTokenHash: await sha256Hex(availabilityToken) }),
+    },
+    select: { id: true, status: true },
+  });
+
+  if (availabilityToken) {
+    await sendAvailabilityEmail(env, { to: existing.email, firstName: existing.firstName, token: availabilityToken });
+  }
+
+  return updated;
 }

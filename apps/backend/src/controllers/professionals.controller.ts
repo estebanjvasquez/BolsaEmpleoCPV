@@ -1,5 +1,10 @@
 import { Hono } from "hono";
-import { professionalRegistrationSchema, professionalSearchQuerySchema } from "@cpv/shared";
+import {
+  professionalRegistrationSchema,
+  professionalSearchQuerySchema,
+  contactRequestSchema,
+  availabilityUpdateSchema,
+} from "@cpv/shared";
 import type { Env } from "../config/env";
 import { createPrismaClient } from "../config/db";
 import { HttpError } from "../lib/http-error";
@@ -7,6 +12,8 @@ import { zodFieldErrors } from "../lib/zod-errors";
 import { registerProfessional } from "../services/professional-registration.service";
 import { verifyProfessionalEmail } from "../services/professional-verification.service";
 import { searchProfessionals } from "../services/professional-search.service";
+import { createContactRequest } from "../services/contact.service";
+import { getAvailabilityByToken, updateAvailabilityByToken } from "../services/professional-availability.service";
 import { companyAuthMiddleware, type CompanyAuthVariables } from "../middleware/company-auth";
 import { requireVerifiedCompany } from "../middleware/require-verified-company";
 
@@ -59,4 +66,32 @@ professionalsController.get("/search", companyAuthMiddleware, requireVerifiedCom
   });
 
   return c.json(result);
+});
+
+professionalsController.post("/:id/contact", companyAuthMiddleware, requireVerifiedCompany, async (c) => {
+  const parsed = contactRequestSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    throw new HttpError(400, "Bad Request", "Validation failed", zodFieldErrors(parsed.error));
+  }
+
+  const prisma = createPrismaClient(c.env);
+  const result = await createContactRequest(c.req.param("id"), c.get("companyId"), parsed.data.message, prisma);
+  return c.json(result);
+});
+
+professionalsController.get("/availability/:token", async (c) => {
+  const prisma = createPrismaClient(c.env);
+  const result = await getAvailabilityByToken(c.req.param("token"), prisma);
+  return c.json(result);
+});
+
+professionalsController.post("/availability/:token", async (c) => {
+  const parsed = availabilityUpdateSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    throw new HttpError(400, "Bad Request", "Validation failed", zodFieldErrors(parsed.error));
+  }
+
+  const prisma = createPrismaClient(c.env);
+  await updateAvailabilityByToken(c.req.param("token"), parsed.data.hired_status, prisma);
+  return c.json({ message: "Estado de disponibilidad actualizado correctamente. ¡Gracias por reportar su contratación!" });
 });

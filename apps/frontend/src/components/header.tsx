@@ -8,12 +8,12 @@ export function Header() {
         <Link href="/" className="flex items-center gap-3">
           <Logo />
         </Link>
-        <button
-          type="button"
+        <Link
+          href="/company/login"
           className="font-label text-label-md font-medium text-on-surface-variant transition-colors duration-200 hover:text-secondary active:opacity-80"
         >
           Iniciar Sesión
-        </button>
+        </Link>
       </div>
     </header>
   );

@@ -76,3 +76,19 @@ export const professionalSearchQuerySchema = z.object({
 });
 
 export type ProfessionalSearchQuery = z.infer<typeof professionalSearchQuerySchema>;
+
+/** Mirrors POST /api/v1/professionals/:id/contact — implementation_plan.md §4.4 */
+export const contactRequestSchema = z.object({
+  message: z.string().min(1).max(1000),
+});
+
+export type ContactRequestInput = z.infer<typeof contactRequestSchema>;
+
+export const hiredStatusSchema = z.enum(["looking", "hired_via_portal", "hired_externally"]);
+
+/** Mirrors POST /api/v1/professionals/availability/:token — implementation_plan.md §4.8 */
+export const availabilityUpdateSchema = z.object({
+  hired_status: hiredStatusSchema,
+});
+
+export type AvailabilityUpdateInput = z.infer<typeof availabilityUpdateSchema>;
