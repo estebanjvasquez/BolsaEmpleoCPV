@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
   // --webpack — see apps/frontend/package.json — since @opennextjs/cloudflare
   // can't yet consume Turbopack's server chunk format).
   outputFileTracingRoot: path.join(__dirname, "..", ".."),
+  transpilePackages: ["@cpv/shared"],
 };
 
 export default nextConfig;

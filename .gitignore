@@ -6,6 +6,8 @@ dist/
 .next/
 .turbo/
 .wrangler/
+.wrangler-agent/
+Guia-Pruebas-MVP-CPV.html
 .open-next/
 *.tsbuildinfo
 cloudflare-env.d.ts

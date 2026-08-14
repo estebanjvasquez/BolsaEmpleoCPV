@@ -21,14 +21,14 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20241127.0",
+    "@cloudflare/workers-types": "^5.20260814.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/pg": "^8.20.0",
     "prisma": "^6.1.0",
     "tsx": "^4.23.1",
     "typescript": "^5.7.0",
     "vitest": "^2.1.0",
-    "wrangler": "^3.90.0"
+    "wrangler": "^4.112.0"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -2,6 +2,7 @@
   "name": "bolsa-empleo-cpv",
   "private": true,
   "version": "0.1.0",
+  "packageManager": "npm@10.9.2",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -10,7 +11,9 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "test": "turbo run test",
-    "clean": "turbo run clean && rm -rf node_modules"
+    "clean": "turbo run clean && rm -rf node_modules",
+    "cf:frontend": "node scripts/wrangler-agent-profile.mjs frontend",
+    "cf:backend": "node scripts/wrangler-agent-profile.mjs backend"
   },
   "devDependencies": {
     "turbo": "^2.3.0"
