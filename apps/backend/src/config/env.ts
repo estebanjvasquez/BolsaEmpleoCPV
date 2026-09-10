@@ -8,9 +8,8 @@ export interface Env {
   HMAC_PEPPER: string;
   /** Cloudflare Turnstile secret key, verified server-side on registration. */
   TURNSTILE_SECRET_KEY: string;
-  /** Resend API key for transactional email. Optional: unset in early environments
-   *  until INF-2's email provider is configured — sending degrades to a logged no-op. */
-  RESEND_API_KEY?: string;
+  /** Native Cloudflare Email Sending binding for transactional emails. */
+  EMAIL: SendEmail;
   EMAIL_FROM: string;
   FRONTEND_URL: string;
   /** Signing secret for company session JWTs (implementation_plan.md §4.2). */

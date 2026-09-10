@@ -8,12 +8,10 @@ export function Header() {
         <Link href="/" className="flex items-center gap-3">
           <Logo />
         </Link>
-        <Link
-          href="/company/login"
-          className="font-label text-label-md font-medium text-on-surface-variant transition-colors duration-200 hover:text-secondary active:opacity-80"
-        >
-          Iniciar Sesión
-        </Link>
+        <div className="flex items-center gap-5">
+          <Link href="/vacantes" className="font-label text-label-md font-medium text-on-surface-variant transition-colors hover:text-secondary">Vacantes</Link>
+          <Link href="/company/login" className="font-label text-label-md font-medium text-on-surface-variant transition-colors hover:text-secondary active:opacity-80">Iniciar Sesión</Link>
+        </div>
       </div>
     </header>
   );

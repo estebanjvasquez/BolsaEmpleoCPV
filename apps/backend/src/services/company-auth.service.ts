@@ -1,8 +1,9 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { sign } from "hono/jwt";
-import type { CompanyLoginInput, CompanyRegistrationInput } from "@cpv/shared";
+import type { CompanyLoginInput, CompanyProfileUpdateInput, CompanyRegistrationInput } from "@cpv/shared";
 import { HttpError } from "../lib/http-error";
 import { hashPassword, verifyPassword } from "./password";
+import { generateToken, sha256Hex } from "./crypto/hmac";
 
 const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
@@ -63,7 +64,7 @@ export async function loginCompany(
   const company = await prisma.company.findUnique({ where: { email: input.email } });
   const valid = await verifyPassword(input.password, company?.passwordHash ?? DUMMY_HASH);
 
-  if (!company || !valid) {
+  if (!company || !valid || !company.isActive) {
     throw new HttpError(401, "Unauthorized", "Credenciales inválidas");
   }
 
@@ -76,4 +77,29 @@ export async function loginCompany(
   );
 
   return { token, company: { id: company.id, name: company.name } };
+}
+
+export async function updateCompanyProfile(id: string, input: CompanyProfileUpdateInput, prisma: PrismaClient) {
+  const existing = await prisma.company.findUnique({ where: { id }, select: { id: true, email: true } });
+  if (!existing) throw new HttpError(404, "Not Found", "Empresa no encontrada");
+  if (input.email !== existing.email) {
+    const duplicate = await prisma.company.findUnique({ where: { email: input.email }, select: { id: true } });
+    if (duplicate) throw new HttpError(400, "Bad Request", "Validation failed", { email: "El correo ya está registrado" });
+  }
+  return prisma.company.update({ where: { id }, data: input, select: { id: true, name: true, email: true, phone: true } });
+}
+
+export async function createCompanyPasswordReset(email: string, prisma: PrismaClient) {
+  const company = await prisma.company.findUnique({ where: { email }, select: { id: true, name: true, email: true, isActive: true } });
+  if (!company?.isActive) return null;
+  const token = generateToken();
+  await prisma.company.update({ where: { id: company.id }, data: { passwordResetTokenHash: await sha256Hex(token), passwordResetExpiresAt: new Date(Date.now() + 60 * 60 * 1000) } });
+  return { ...company, token };
+}
+
+export async function resetCompanyPassword(token: string, password: string, prisma: PrismaClient) {
+  const tokenHash = await sha256Hex(token);
+  const company = await prisma.company.findFirst({ where: { passwordResetTokenHash: tokenHash, passwordResetExpiresAt: { gt: new Date() }, isActive: true }, select: { id: true } });
+  if (!company) throw new HttpError(400, "Bad Request", "El enlace no es válido o expiró");
+  await prisma.company.update({ where: { id: company.id }, data: { passwordHash: await hashPassword(password), passwordResetTokenHash: null, passwordResetExpiresAt: null } });
 }

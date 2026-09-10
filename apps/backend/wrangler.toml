@@ -15,8 +15,12 @@ compatibility_flags = ["nodejs_compat"]
 binding = "HYPERDRIVE"
 id = "ef8dcb0183ac49349ebc16c8f5a7bc85"
 
+# Native transactional email binding. The sender domain is onboarded in
+# Cloudflare Email Sending; no third-party API key is required.
+[[send_email]]
+name = "EMAIL"
+
 [vars]
 ENVIRONMENT = "production"
 FRONTEND_URL = "https://talento.camarapetrolera.app"
-# Placeholder sender — must be a domain verified in Resend before it will actually deliver.
 EMAIL_FROM = "no-reply@talento.camarapetrolera.app"

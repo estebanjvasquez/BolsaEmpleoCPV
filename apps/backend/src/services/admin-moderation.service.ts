@@ -1,9 +1,11 @@
 import type { PrismaClient, ProfessionalStatus } from "@prisma/client";
+import type { z } from "zod";
+import type { professionalAdminUpdateSchema } from "@cpv/shared";
 import type { Env } from "../config/env";
 import { HttpError } from "../lib/http-error";
 import { decrypt } from "./crypto/encryption";
 import { generateToken, sha256Hex } from "./crypto/hmac";
-import { sendAvailabilityEmail } from "./email";
+import { sendAvailabilityEmail, sendResubmissionEmail } from "./email";
 
 interface ListDeps {
   prisma: PrismaClient;
@@ -30,6 +32,7 @@ export async function listProfessionalsByStatus(status: ProfessionalStatus, { pr
       email: true,
       phoneEncrypted: true,
       status: true,
+      isActive: true,
       createdAt: true,
     },
   });
@@ -45,6 +48,7 @@ export async function listProfessionalsByStatus(status: ProfessionalStatus, { pr
       email: p.email,
       phone: await decrypt(p.phoneEncrypted, encryptionKey),
       status: p.status,
+      is_active: p.isActive,
       created_at: p.createdAt.toISOString(),
     })),
   );
@@ -66,6 +70,7 @@ export async function listProfessionalsByStatus(status: ProfessionalStatus, { pr
 interface UpdateStatusDeps {
   prisma: PrismaClient;
   env: Env;
+  adminId: string;
 }
 
 /**
@@ -77,7 +82,8 @@ interface UpdateStatusDeps {
 export async function updateProfessionalStatus(
   id: string,
   status: ProfessionalStatus,
-  { prisma, env }: UpdateStatusDeps,
+  reason: string | undefined,
+  { prisma, env, adminId }: UpdateStatusDeps,
 ): Promise<{ id: string; status: ProfessionalStatus }> {
   const existing = await prisma.professional.findUnique({
     where: { id },
@@ -89,19 +95,47 @@ export async function updateProfessionalStatus(
 
   const mintAvailabilityToken = status === "approved" && !existing.availabilityTokenHash;
   const availabilityToken = mintAvailabilityToken ? generateToken() : null;
+  const resubmissionToken = status === "rejected" ? generateToken() : null;
 
-  const updated = await prisma.professional.update({
-    where: { id },
-    data: {
-      status,
-      ...(availabilityToken && { availabilityTokenHash: await sha256Hex(availabilityToken) }),
-    },
-    select: { id: true, status: true },
+  const updated = await prisma.$transaction(async (tx) => {
+    const value = await tx.professional.update({
+      where: { id },
+      data: {
+        status, moderationReason: status === "rejected" ? reason : null,
+        ...(availabilityToken && { availabilityTokenHash: await sha256Hex(availabilityToken) }),
+        ...(resubmissionToken && { editTokenHash: await sha256Hex(resubmissionToken), editableUntil: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) }),
+      },
+      select: { id: true, status: true },
+    });
+    await tx.adminAuditLog.create({ data: { adminId, action: `professional_${status}`, targetType: "professional", targetId: id, reason: reason ?? null } });
+    return value;
   });
 
   if (availabilityToken) {
     await sendAvailabilityEmail(env, { to: existing.email, firstName: existing.firstName, token: availabilityToken });
   }
+  if (resubmissionToken && reason) await sendResubmissionEmail(env, { to: existing.email, firstName: existing.firstName, token: resubmissionToken, reason });
 
   return updated;
+}
+
+export async function resubmitProfessional(token: string, prisma: PrismaClient): Promise<void> {
+  const tokenHash = await sha256Hex(token);
+  const professional = await prisma.professional.findFirst({ where: { editTokenHash: tokenHash, editableUntil: { gt: new Date() }, status: "rejected" }, select: { id: true } });
+  if (!professional) throw new HttpError(404, "Not Found", "El enlace no es válido o expiró");
+  await prisma.professional.update({ where: { id: professional.id }, data: { status: "pending", moderationReason: null, editTokenHash: null, editableUntil: null } });
+}
+
+export async function setProfessionalActive(id: string, isActive: boolean, adminId: string, prisma: PrismaClient) {
+  const professional = await prisma.professional.update({ where: { id }, data: { isActive }, select: { id: true, isActive: true } }).catch(() => null);
+  if (!professional) throw new HttpError(404, "Not Found", "Profesional no encontrado");
+  await prisma.adminAuditLog.create({ data: { adminId, action: isActive ? "professional_activated" : "professional_deactivated", targetType: "professional", targetId: id } });
+  return { id: professional.id, is_active: professional.isActive };
+}
+
+export async function updateProfessionalByAdmin(id: string, input: z.infer<typeof professionalAdminUpdateSchema>, adminId: string, prisma: PrismaClient) {
+  const updated = await prisma.professional.update({ where: { id }, data: { city: input.city, state: input.state, experienceYears: input.experience_years, lastPosition: input.last_position, bioSummary: input.bio_summary }, select: { id: true } }).catch(() => null);
+  if (!updated) throw new HttpError(404, "Not Found", "Profesional no encontrado");
+  await prisma.adminAuditLog.create({ data: { adminId, action: "professional_updated", targetType: "professional", targetId: id, metadata: input } });
+  return { id: updated.id, message: "Perfil profesional actualizado." };
 }

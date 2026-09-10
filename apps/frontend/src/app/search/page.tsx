@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ProfessionalSearchResult, CompanyContactSummary, ContactResult } from "@cpv/shared";
 import { apiFetch, ApiRequestError } from "@/lib/api-client";
@@ -213,9 +214,11 @@ export default function SearchPage() {
         <h1 className="font-headline text-headline-lg-mobile text-primary-container md:text-headline-lg">
           Buscador de Profesionales
         </h1>
-        <button type="button" onClick={logout} className="font-label text-label-md text-on-surface-variant hover:text-secondary">
-          Cerrar sesión
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-4">
+          <Link href="/company/profile" className="font-label text-label-md text-primary-container hover:underline">Perfil de empresa</Link>
+          <Link href="/company/vacancies" className="font-label text-label-md text-primary-container hover:underline">Mis vacantes</Link>
+          <button type="button" onClick={logout} className="font-label text-label-md text-on-surface-variant hover:text-secondary">Cerrar sesión</button>
+        </div>
       </div>
 
       <div className="mt-6 flex gap-2 border-b border-border-subtle">

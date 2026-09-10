@@ -1,44 +1,9 @@
 import type { Env } from "../config/env";
 
-const RESEND_API_URL = "https://api.resend.com/emails";
-
 interface SendVerificationEmailParams {
   to: string;
   firstName: string;
   token: string;
-}
-
-/**
- * Sends the registration email-verification link via Resend. Best-effort: a
- * missing RESEND_API_KEY (email provider not yet provisioned, INF-2) or a
- * delivery failure is logged, not thrown — registration must still succeed
- * even if the confirmation email can't go out yet.
- */
-export async function sendVerificationEmail(env: Env, params: SendVerificationEmailParams): Promise<void> {
-  if (!env.RESEND_API_KEY) {
-    console.error(`RESEND_API_KEY not configured — skipped verification email to ${params.to}`);
-    return;
-  }
-
-  const verifyUrl = `${env.FRONTEND_URL}/verify-email?token=${params.token}`;
-
-  const response = await fetch(RESEND_API_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: env.EMAIL_FROM,
-      to: params.to,
-      subject: "Confirma tu correo — Bolsa de Talento CPV",
-      html: `<p>Hola ${params.firstName},</p><p>Gracias por registrarte en la Bolsa de Talento de la Cámara Petrolera de Venezuela. Confirma tu correo con el siguiente enlace:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`,
-    }),
-  });
-
-  if (!response.ok) {
-    console.error(`Failed to send verification email to ${params.to}: ${response.status} ${await response.text()}`);
-  }
 }
 
 interface SendAvailabilityEmailParams {
@@ -47,34 +12,78 @@ interface SendAvailabilityEmailParams {
   token: string;
 }
 
-/**
- * Sends the persistent availability/hired-status link a candidate gets once
- * approved (implementation_plan.md §4.8). Best-effort, same degrade-to-log
- * behavior as sendVerificationEmail — approval must still succeed without it.
- */
-export async function sendAvailabilityEmail(env: Env, params: SendAvailabilityEmailParams): Promise<void> {
-  if (!env.RESEND_API_KEY) {
-    console.error(`RESEND_API_KEY not configured — skipped availability email to ${params.to}`);
-    return;
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>'"]/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;",
+  })[character] ?? character);
+}
+
+async function sendTransactionalEmail(
+  env: Env,
+  message: { to: string; subject: string; html: string; text: string },
+): Promise<void> {
+  try {
+    const result = await env.EMAIL.send({
+      to: message.to,
+      from: { email: env.EMAIL_FROM, name: "Bolsa de Talento CPV" },
+      subject: message.subject,
+      html: message.html,
+      text: message.text,
+    });
+    console.log(`Transactional email accepted for delivery: ${result.messageId}`);
+  } catch (error) {
+    const details = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    console.error(`Failed to send transactional email: ${details}`);
   }
+}
 
-  const availabilityUrl = `${env.FRONTEND_URL}/disponibilidad/${params.token}`;
-
-  const response = await fetch(RESEND_API_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: env.EMAIL_FROM,
-      to: params.to,
-      subject: "Su perfil fue aprobado — Bolsa de Talento CPV",
-      html: `<p>Hola ${params.firstName},</p><p>Su perfil en la Bolsa de Talento de la Cámara Petrolera de Venezuela fue aprobado y ya es visible para las empresas registradas.</p><p>Si consigue empleo o desea actualizar su disponibilidad, use este enlace personal en cualquier momento:</p><p><a href="${availabilityUrl}">${availabilityUrl}</a></p>`,
-    }),
+/** Sends email verification without blocking registration if delivery fails. */
+export async function sendVerificationEmail(env: Env, params: SendVerificationEmailParams): Promise<void> {
+  const verifyUrl = `${env.FRONTEND_URL}/verify-email?token=${encodeURIComponent(params.token)}`;
+  const firstName = escapeHtml(params.firstName);
+  await sendTransactionalEmail(env, {
+    to: params.to,
+    subject: "Confirma tu correo — Bolsa de Talento CPV",
+    html: `<p>Hola ${firstName},</p><p>Gracias por registrarte en la Bolsa de Talento de la Cámara Petrolera de Venezuela. Confirma tu correo con el siguiente enlace:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`,
+    text: `Hola ${params.firstName},\n\nGracias por registrarte en la Bolsa de Talento de la Cámara Petrolera de Venezuela. Confirma tu correo aquí:\n${verifyUrl}`,
   });
+}
 
-  if (!response.ok) {
-    console.error(`Failed to send availability email to ${params.to}: ${response.status} ${await response.text()}`);
-  }
+export async function sendResubmissionEmail(env: Env, params: { to: string; firstName: string; token: string; reason: string }): Promise<void> {
+  const url = `${env.FRONTEND_URL}/reenvio/${encodeURIComponent(params.token)}`;
+  const firstName = escapeHtml(params.firstName);
+  const reason = escapeHtml(params.reason);
+  await sendTransactionalEmail(env, {
+    to: params.to,
+    subject: "Acción requerida para su perfil — Bolsa de Talento CPV",
+    html: `<p>Hola ${firstName},</p><p>Su perfil requiere ajustes antes de ser aprobado.</p><p><strong>Observación:</strong> ${reason}</p><p>Cuando esté listo para reenviarlo a revisión, use este enlace:</p><p><a href="${url}">${url}</a></p>`,
+    text: `Hola ${params.firstName},\n\nSu perfil requiere ajustes antes de ser aprobado.\n\nObservación: ${params.reason}\n\nCuando esté listo para reenviarlo a revisión, use este enlace:\n${url}`,
+  });
+}
+
+export async function sendCompanyPasswordResetEmail(env: Env, params: { to: string; companyName: string; token: string }): Promise<void> {
+  const url = `${env.FRONTEND_URL}/company/reset-password/${encodeURIComponent(params.token)}`;
+  const companyName = escapeHtml(params.companyName);
+  await sendTransactionalEmail(env, {
+    to: params.to,
+    subject: "Restablezca el acceso de su empresa — Bolsa de Talento CPV",
+    html: `<p>Hola ${companyName},</p><p>Recibimos una solicitud para restablecer su acceso.</p><p><a href="${url}">${url}</a></p><p>El enlace vence en una hora y solo puede usarse una vez.</p>`,
+    text: `Hola ${params.companyName},\n\nRecibimos una solicitud para restablecer su acceso.\n${url}\n\nEl enlace vence en una hora y solo puede usarse una vez.`,
+  });
+}
+
+/** Sends the availability link after a professional profile is approved. */
+export async function sendAvailabilityEmail(env: Env, params: SendAvailabilityEmailParams): Promise<void> {
+  const availabilityUrl = `${env.FRONTEND_URL}/disponibilidad/${encodeURIComponent(params.token)}`;
+  const firstName = escapeHtml(params.firstName);
+  await sendTransactionalEmail(env, {
+    to: params.to,
+    subject: "Su perfil fue aprobado — Bolsa de Talento CPV",
+    html: `<p>Hola ${firstName},</p><p>Su perfil en la Bolsa de Talento de la Cámara Petrolera de Venezuela fue aprobado y ya es visible para las empresas registradas.</p><p>Si consigue empleo o desea actualizar su disponibilidad, use este enlace personal en cualquier momento:</p><p><a href="${availabilityUrl}">${availabilityUrl}</a></p>`,
+    text: `Hola ${params.firstName},\n\nSu perfil en la Bolsa de Talento de la Cámara Petrolera de Venezuela fue aprobado y ya es visible para las empresas registradas.\n\nSi consigue empleo o desea actualizar su disponibilidad, use este enlace personal en cualquier momento:\n${availabilityUrl}`,
+  });
 }

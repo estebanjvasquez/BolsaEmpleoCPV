@@ -14,6 +14,7 @@ import { verifyProfessionalEmail } from "../services/professional-verification.s
 import { searchProfessionals } from "../services/professional-search.service";
 import { createContactRequest } from "../services/contact.service";
 import { getAvailabilityByToken, updateAvailabilityByToken } from "../services/professional-availability.service";
+import { resubmitProfessional } from "../services/admin-moderation.service";
 import { companyAuthMiddleware, type CompanyAuthVariables } from "../middleware/company-auth";
 import { requireVerifiedCompany } from "../middleware/require-verified-company";
 
@@ -94,4 +95,10 @@ professionalsController.post("/availability/:token", async (c) => {
   const prisma = createPrismaClient(c.env);
   await updateAvailabilityByToken(c.req.param("token"), parsed.data.hired_status, prisma);
   return c.json({ message: "Estado de disponibilidad actualizado correctamente. ¡Gracias por reportar su contratación!" });
+});
+
+professionalsController.post("/resubmissions/:token", async (c) => {
+  const prisma = createPrismaClient(c.env);
+  await resubmitProfessional(c.req.param("token"), prisma);
+  return c.json({ message: "Su perfil fue reenviado para una nueva revisión." });
 });

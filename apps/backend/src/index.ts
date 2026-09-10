@@ -7,6 +7,7 @@ import { professionalsController } from "./controllers/professionals.controller"
 import { companiesController } from "./controllers/companies.controller";
 import { adminController } from "./controllers/admin.controller";
 import { catalogsController } from "./controllers/catalogs.controller";
+import { vacanciesController } from "./controllers/vacancies.controller";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -33,6 +34,7 @@ app.route("/api/v1/professionals", professionalsController);
 app.route("/api/v1/companies", companiesController);
 app.route("/api/v1/admin", adminController);
 app.route("/api/v1/catalogs", catalogsController);
+app.route("/api/v1/vacancies", vacanciesController);
 
 // Future routes mount here as controllers land (BE-7, BE-9, BE-10, implementation_plan.md §8).
 

@@ -16,6 +16,7 @@ interface SearchResult {
 function buildWhere(query: ProfessionalSearchQuery): Prisma.ProfessionalWhereInput {
   return {
     status: "approved",
+    isActive: true,
     // Hidden from companies once hired, whether self-reported (§4.8) or
     // company-reported (§4.9) — see professional-availability.service.ts /
     // company-feedback.service.ts.

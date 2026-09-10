@@ -18,6 +18,19 @@ enum ProfessionalStatus {
   rejected
 }
 
+enum CompanyStatus {
+  pending
+  approved
+  rejected
+}
+
+enum VacancyStatus {
+  pending
+  approved
+  rejected
+  closed
+}
+
 enum HiredStatus {
   looking
   hired_via_portal
@@ -50,6 +63,7 @@ model Area {
   createdBy    String        @default("system") @map("created_by")
   subareas     Subarea[]
   professionals Professional[]
+  vacancies     Vacancy[]
 
   @@map("areas")
 }
@@ -98,10 +112,15 @@ model Company {
   phone        String        @db.VarChar(50)
   passwordHash String        @map("password_hash") @db.VarChar(255)
   isVerified   Boolean       @default(false) @map("is_verified")
+  status       CompanyStatus @default(pending)
+  isActive     Boolean       @default(true) @map("is_active")
+  passwordResetTokenHash String? @map("password_reset_token_hash") @db.Char(64)
+  passwordResetExpiresAt DateTime? @map("password_reset_expires_at")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
   searches     SearchLog[]
   contacts     ContactLog[]
+  vacancies    Vacancy[]
 
   @@map("companies")
 }
@@ -115,6 +134,7 @@ model Admin {
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
   piiAccesses  PiiAccessLog[]
+  auditEntries AdminAuditLog[]
 
   @@map("admins")
 }
@@ -147,6 +167,8 @@ model Professional {
   immediateAvailability  Boolean                     @default(false) @map("immediate_availability")
   salaryExpectation      Decimal?                    @map("salary_expectation") @db.Decimal(12, 2)
   status                 ProfessionalStatus          @default(pending)
+  isActive               Boolean                     @default(true) @map("is_active")
+  moderationReason       String?                     @map("moderation_reason") @db.Text
   hiredStatus            HiredStatus                 @default(looking) @map("hired_status")
   hiredAt                DateTime?                   @map("hired_at")
   availabilityTokenHash  String?                     @map("availability_token_hash") @db.Char(64)
@@ -164,6 +186,45 @@ model Professional {
   piiAccesses            PiiAccessLog[]
 
   @@map("professionals")
+}
+
+model Vacancy {
+  id                String        @id @default(uuid()) @db.Uuid
+  companyId         String        @map("company_id") @db.Uuid
+  company           Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  title             String        @db.VarChar(150)
+  description       String        @db.Text
+  location          String        @db.VarChar(150)
+  areaId            Int           @map("area_id")
+  area              Area          @relation(fields: [areaId], references: [id])
+  employmentType    String        @map("employment_type") @db.VarChar(50)
+  experienceYears   Int           @map("experience_years")
+  salaryMin         Decimal?      @map("salary_min") @db.Decimal(12, 2)
+  salaryMax         Decimal?      @map("salary_max") @db.Decimal(12, 2)
+  deadline          DateTime?     @db.Date
+  externalApplicationUrl String?   @map("external_application_url") @db.VarChar(500)
+  status            VacancyStatus @default(pending)
+  moderationReason  String?       @map("moderation_reason") @db.Text
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@map("vacancies")
+}
+
+model AdminAuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  adminId    String   @map("admin_id") @db.Uuid
+  admin      Admin    @relation(fields: [adminId], references: [id], onDelete: Restrict)
+  action     String   @db.VarChar(80)
+  targetType String   @map("target_type") @db.VarChar(50)
+  targetId   String   @map("target_id") @db.Uuid
+  reason     String?  @db.Text
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([targetType, targetId, createdAt])
+  @@map("admin_audit_log")
 }
 
 model ProfessionalCertification {

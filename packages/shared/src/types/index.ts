@@ -2,6 +2,8 @@
  * apps/backend/prisma/schema.prisma, minus internal/encrypted-only fields. */
 
 export type ProfessionalStatus = "pending" | "approved" | "rejected";
+export type CompanyStatus = "pending" | "approved" | "rejected";
+export type VacancyStatus = "pending" | "approved" | "rejected" | "closed";
 export type HiredStatus = "looking" | "hired_via_portal" | "hired_externally";
 export type UserRole = "superadmin" | "moderator";
 export type ContactStatus = "pending_admin" | "sent" | "blocked";
