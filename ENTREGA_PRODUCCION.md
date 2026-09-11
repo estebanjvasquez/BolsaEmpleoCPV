@@ -25,6 +25,16 @@
 
 ## Operación y reversión
 
+Publicadas el 11 de septiembre de 2026, ambas al 100 %:
+
+- Backend `3aa7a13d-e5f8-4dd5-961e-4058bc276aef`.
+- Frontend `f370f845-b207-4ae8-864d-0241bc97fd75`.
+- Código de aplicación: commit `4d2171b`, rama `release/production-readiness-20260910`.
+- Candidatos comprobados antes de promoción. Tras publicar: `/health`, `/health/db`, `/api/v1/vacancies`, portada, contactos/correos administrativos y recuperación de contraseña responden HTTP 200 en sus dominios públicos. Un 200 de una página privada no acredita acceso autenticado.
+- Cron `*/5 * * * *` publicado correctamente. No se enviaron correos a usuarios reales para estas comprobaciones.
+- `BUILD_ID` público coincide exactamente con el artefacto local. Contactos, correos y búsqueda de profesionales devuelven 401 sin sesión.
+- En Edge se comprobó la nueva página de login, sus enlaces y la carga del widget Turnstile real en registro de empresa (sin resolver el desafío ni crear cuentas). La sesión administrativa previa había caducado: el recorrido visual autenticado queda pendiente de que el usuario inicie sesión personalmente.
+
 Versiones previas a esta entrega:
 
 - Backend `a3b6c260-5fd5-416b-bf36-111361a49f5d`.
@@ -40,5 +50,6 @@ Tras la promoción del backend se publican sus triggers con `node scripts/wrangl
 - Ensayar restauración de backup físico en un destino aislado; los backups existen, pero su restauración no está certificada por esta entrega.
 - Probar recepción real de mensajes en un buzón controlado. Las pruebas de integración simulan el proveedor para evitar notificaciones a terceros.
 - WAF externo y alertas externas de disponibilidad pendientes de revisión/configuración. La aplicación ya aplica límites propios y tiene observabilidad de Workers habilitada.
+- El asesor de Supabase conserva una advertencia por la extensión `pg_trgm` instalada en `public`; su traslado requiere revisar las dependencias e índices antes de modificarla.
 - La paginación completa de todos los listados y el recordatorio automático de resultados de contratación a 30 días continúan como mejoras posteriores (P2).
 - Diez perfiles previamente aprobados carecen de verificación de correo: quedarán ocultos a empresas hasta verificar. El administrador dispone de «Reenviar verificación». No se verificaron automáticamente ni se les envió correo durante esta entrega.
