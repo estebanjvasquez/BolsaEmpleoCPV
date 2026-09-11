@@ -35,6 +35,11 @@ Publicadas el 11 de septiembre de 2026, ambas al 100 %:
 - `BUILD_ID` público coincide exactamente con el artefacto local. Contactos, correos y búsqueda de profesionales devuelven 401 sin sesión.
 - En Edge se comprobó la nueva página de login, sus enlaces y la carga del widget Turnstile real en registro de empresa (sin resolver el desafío ni crear cuentas). La sesión administrativa previa había caducado: el recorrido visual autenticado queda pendiente de que el usuario inicie sesión personalmente.
 
+## Corrección posterior: datos de demostración
+
+- La migración `20260911073637_restore_test_professional_visibility` restauró la verificación exclusivamente para los diez perfiles de demostración cargados juntos el 21 de julio de 2026. La migración aborta si no identifica exactamente esos diez perfiles.
+- Verificación posterior: 10 profesionales visibles para empresas y 1 vacante pública aprobada. Los perfiles nuevos siguen requiriendo correo verificado.
+
 Versiones previas a esta entrega:
 
 - Backend `a3b6c260-5fd5-416b-bf36-111361a49f5d`.
