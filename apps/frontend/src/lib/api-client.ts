@@ -1,4 +1,5 @@
 import type { ApiError } from "@cpv/shared";
+import { readLocale } from "./i18n";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8787";
 
@@ -16,6 +17,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     ...init,
     headers: {
       "Content-Type": "application/json",
+      "Accept-Language": readLocale(),
       ...init?.headers,
     },
   });

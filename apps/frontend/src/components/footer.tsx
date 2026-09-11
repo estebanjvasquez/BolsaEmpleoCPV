@@ -1,6 +1,10 @@
+"use client";
+
 import { Logo } from "./logo";
+import { useLanguage } from "./language-provider";
 
 export function Footer() {
+  const { t } = useLanguage();
   return (
     <footer className="w-full border-t border-on-primary-fixed-variant bg-primary-container py-12">
       <div className="mx-auto grid max-w-container-max grid-cols-1 gap-gutter px-margin-mobile md:grid-cols-4 md:px-margin-desktop">
@@ -9,35 +13,34 @@ export function Footer() {
             <Logo variant="light" />
           </div>
           <p className="max-w-md font-body text-body-sm text-surface">
-            La Cámara Petrolera de Venezuela es la asociación empresarial que agrupa a las empresas privadas
-            nacionales que prestan servicios y suministran bienes al sector energético.
+            {t("La Cámara Petrolera de Venezuela es la asociación empresarial que agrupa a las empresas privadas nacionales que prestan servicios y suministran bienes al sector energético.")}
           </p>
         </div>
         <div>
-          <h4 className="mb-4 font-label text-label-md text-on-primary-fixed">Enlaces de Interés</h4>
+          <h4 className="mb-4 font-label text-label-md text-on-primary-fixed">{t("Enlaces de Interés")}</h4>
           <nav className="flex flex-col gap-2">
             <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="https://camarapetrolera.org/">
-              Afiliación
+              {t("Afiliación")}
             </a>
             <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="/company/login">
-              Empresas
+              {t("Empresas")}
             </a>
             <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="/register">
-              Talento
+              {t("Profesionales")}
             </a>
             <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="/ayuda#contacto">
-              Contacto
+              {t("Contacto")}
             </a>
           </nav>
         </div>
         <div>
-          <h4 className="mb-4 font-label text-label-md text-on-primary-fixed">Información</h4>
+          <h4 className="mb-4 font-label text-label-md text-on-primary-fixed">{t("Información")}</h4>
           <nav className="flex flex-col gap-2">
             <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="/ayuda#datos">
-              Datos personales
+              {t("Datos personales")}
             </a>
             <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="/ayuda">
-              Uso del portal
+              {t("Uso del portal")}
             </a>
           </nav>
         </div>

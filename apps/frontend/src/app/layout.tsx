@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Hanken_Grotesk, Open_Sans, Inter } from "next/font/google";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
+import { LanguageProvider } from "@/components/language-provider";
 import "./globals.css";
 
 const hankenGrotesk = Hanken_Grotesk({
@@ -41,9 +42,11 @@ export default function RootLayout({
         />
       </head>
       <body className="flex min-h-full flex-col bg-surface text-on-surface">
-        <Header />
-        <main className="flex flex-1 flex-col">{children}</main>
-        <Footer />
+        <LanguageProvider>
+          <Header />
+          <main className="flex flex-1 flex-col">{children}</main>
+          <Footer />
+        </LanguageProvider>
       </body>
     </html>
   );
