@@ -30,6 +30,7 @@ export async function listProfessionalsByStatus(status: ProfessionalStatus, { pr
       documentType: true,
       documentNumberEncrypted: true,
       email: true,
+      emailVerified: true,
       phoneEncrypted: true,
       status: true,
       isActive: true,
@@ -46,6 +47,7 @@ export async function listProfessionalsByStatus(status: ProfessionalStatus, { pr
       document_type: p.documentType,
       document_number: await decrypt(p.documentNumberEncrypted, encryptionKey),
       email: p.email,
+      email_verified: p.emailVerified,
       phone: await decrypt(p.phoneEncrypted, encryptionKey),
       status: p.status,
       is_active: p.isActive,
@@ -87,10 +89,14 @@ export async function updateProfessionalStatus(
 ): Promise<{ id: string; status: ProfessionalStatus }> {
   const existing = await prisma.professional.findUnique({
     where: { id },
-    select: { id: true, firstName: true, email: true, availabilityTokenHash: true },
+    select: { id: true, firstName: true, email: true, emailVerified: true, availabilityTokenHash: true },
   });
   if (!existing) {
     throw new HttpError(404, "Not Found", "Profesional no encontrado");
+  }
+
+  if (status === "approved" && !existing.emailVerified) {
+    throw new HttpError(409, "Conflict", "El profesional debe verificar su correo antes de ser aprobado.");
   }
 
   const mintAvailabilityToken = status === "approved" && !existing.availabilityTokenHash;

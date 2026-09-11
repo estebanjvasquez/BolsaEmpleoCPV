@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { CompanyStatus, ProfessionalStatus } from "@cpv/shared";
 import { apiFetch, ApiRequestError } from "@/lib/api-client";
 import { clearAdminToken, getAdminToken } from "@/lib/admin-auth";
@@ -22,6 +21,7 @@ interface AdminProfessional {
   document_type: string;
   document_number: string;
   email: string;
+  email_verified: boolean;
   phone: string;
   status: ProfessionalStatus;
   is_active: boolean;
@@ -69,9 +69,11 @@ const COMPANY_STATUS_BADGE: Record<CompanyStatus, string> = {
   rejected: "bg-error-container text-on-error-container",
 };
 
-export default function AdminPage() {
+function AdminContent() {
   const router = useRouter();
-  const [tab, setTab] = useState<"moderation" | "companies" | "vacancies" | "catalogs">("moderation");
+  const params = useSearchParams();
+  const selectedTab = params.get("tab");
+  const tab = selectedTab === "companies" || selectedTab === "vacancies" || selectedTab === "catalogs" ? selectedTab : "moderation";
   const [status, setStatus] = useState<ProfessionalStatus>("pending");
   const [items, setItems] = useState<AdminProfessional[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -94,36 +96,33 @@ export default function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
-  const loadCompanies = (selectedStatus = companyStatus) => {
+  const loadCompanies = useCallback((selectedStatus = companyStatus) => {
     const token = getAdminToken();
     if (!token) return;
-    setCompaniesError(null);
     apiFetch<{ data: AdminCompany[] }>(`/api/v1/admin/companies?status=${selectedStatus}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((res) => setCompanies(res.data))
+      .then((res) => { setCompanies(res.data); setCompaniesError(null); })
       .catch((err) => {
         setCompaniesError(err instanceof ApiRequestError ? err.body.message : "No se pudo conectar con el servidor.");
       });
-  };
+  }, [companyStatus]);
 
-  const loadVacancies = (selectedStatus = vacancyStatus) => {
+  const loadVacancies = useCallback((selectedStatus = vacancyStatus) => {
     const token = getAdminToken();
     if (!token) return;
-    setVacancyError(null);
     apiFetch<{ data: AdminVacancy[] }>(`/api/v1/admin/vacancies?status=${selectedStatus}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => setVacancies(res.data))
+      .then((res) => { setVacancies(res.data); setVacancyError(null); })
       .catch((err) => setVacancyError(err instanceof ApiRequestError ? err.body.message : "No se pudieron cargar las vacantes."));
-  };
+  }, [vacancyStatus]);
 
   useEffect(() => {
     if (tab === "companies") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadCompanies();
     }
-  }, [tab, companyStatus]);
+  }, [tab, loadCompanies]);
 
-  useEffect(() => { if (tab === "vacancies") loadVacancies(); }, [tab, vacancyStatus]);
+  useEffect(() => { if (tab === "vacancies") loadVacancies(); }, [tab, loadVacancies]);
 
   const updateVacancyStatus = async (id: string, nextStatus: "approved" | "rejected" | "closed") => {
     const token = getAdminToken(); if (!token) return;
@@ -228,53 +227,18 @@ export default function AdminPage() {
     catch (err) { setError(err instanceof ApiRequestError ? err.body.message : "No se pudo actualizar el acceso del profesional."); }
   };
 
-  const logout = () => {
-    clearAdminToken();
-    router.push("/admin/login");
+  const resendVerification = async (id: string) => {
+    setActionId(id);
+    try {
+      const result = await apiFetch<{ message: string }>(`/api/v1/admin/professionals/${id}/verification`, { method: "POST", headers: { Authorization: `Bearer ${getAdminToken()}` } });
+      setError(result.message);
+    } catch (e) { setError(e instanceof ApiRequestError ? e.body.message : "No se pudo solicitar la verificación."); }
+    finally { setActionId(null); }
   };
 
   return (
-    <section className="mx-auto w-full max-w-container-max px-margin-mobile py-12 md:px-margin-desktop">
-      <div className="flex items-center justify-between">
-        <h1 className="font-headline text-headline-lg-mobile text-primary-container md:text-headline-lg">
-          Panel de Administración
-        </h1>
-        <button
-          type="button"
-          onClick={logout}
-          className="font-label text-label-md text-on-surface-variant hover:text-secondary"
-        >
-          Cerrar sesión
-        </button>
-      </div>
-
-      <div className="mt-6 flex gap-2 border-b border-border-subtle">
-        <button
-          type="button"
-          onClick={() => setTab("moderation")}
-          className={`px-4 py-2.5 font-label text-label-md ${tab === "moderation" ? "border-b-2 border-primary-container text-primary-container" : "text-on-surface-variant"}`}
-        >
-          Moderación
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("companies")}
-          className={`px-4 py-2.5 font-label text-label-md ${tab === "companies" ? "border-b-2 border-primary-container text-primary-container" : "text-on-surface-variant"}`}
-        >
-          Empresas
-        </button>
-        <button type="button" onClick={() => setTab("vacancies")} className={`px-4 py-2.5 font-label text-label-md ${tab === "vacancies" ? "border-b-2 border-primary-container text-primary-container" : "text-on-surface-variant"}`}>Vacantes</button>
-        <button
-          type="button"
-          onClick={() => setTab("catalogs")}
-          className={`px-4 py-2.5 font-label text-label-md ${tab === "catalogs" ? "border-b-2 border-primary-container text-primary-container" : "text-on-surface-variant"}`}
-        >
-          Catálogos
-        </button>
-        <Link href="/admin/stats" className="px-4 py-2.5 font-label text-label-md text-on-surface-variant hover:text-primary-container">
-          Estadísticas
-        </Link>
-      </div>
+    <section className="mx-auto w-full max-w-container-max px-margin-mobile py-8 md:px-margin-desktop">
+      <h1 className="font-headline text-headline-lg-mobile text-primary-container md:text-headline-lg">Panel de Administración</h1>
 
       {tab === "moderation" && (
         <>
@@ -337,6 +301,8 @@ export default function AdminPage() {
                 </td>
                 <td className="px-4 py-3 font-body text-body-sm text-on-surface-variant">
                   <div>{p.email}</div>
+                  <div className={p.email_verified ? "text-secondary" : "text-error"}>{p.email_verified ? "Correo verificado" : "Correo sin verificar"}</div>
+                  {!p.email_verified && p.is_active && <button type="button" disabled={actionId === p.id} onClick={() => resendVerification(p.id)} className="mt-1 underline disabled:opacity-50">Reenviar verificación</button>}
                   <div>{p.phone}</div>
                 </td>
                 <td className="px-4 py-3">
@@ -349,7 +315,7 @@ export default function AdminPage() {
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        disabled={actionId === p.id}
+                        disabled={actionId === p.id || !p.email_verified}
                         onClick={() => updateStatus(p.id, "approved")}
                         className="rounded bg-secondary-container px-3 py-1.5 font-label text-label-sm text-white disabled:opacity-50"
                       >
@@ -390,8 +356,7 @@ export default function AdminPage() {
                 onClick={() => {
                   setCompanyStatus(item.value);
                   setCompanies(null);
-                  setCompaniesError(null);
-                }}
+                              }}
                 className={`px-4 py-2.5 font-label text-label-md ${
                   companyStatus === item.value
                     ? "border-b-2 border-primary-container text-primary-container"
@@ -503,3 +468,5 @@ export default function AdminPage() {
     </section>
   );
 }
+
+export default function AdminPage() { return <Suspense fallback={<p className="p-8">Cargando panel…</p>}><AdminContent /></Suspense>; }

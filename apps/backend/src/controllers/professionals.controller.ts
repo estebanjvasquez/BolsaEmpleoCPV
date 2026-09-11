@@ -4,6 +4,7 @@ import {
   professionalSearchQuerySchema,
   contactRequestSchema,
   availabilityUpdateSchema,
+  professionalCorrectionSchema,
 } from "@cpv/shared";
 import type { Env } from "../config/env";
 import { createPrismaClient } from "../config/db";
@@ -14,9 +15,10 @@ import { verifyProfessionalEmail } from "../services/professional-verification.s
 import { searchProfessionals } from "../services/professional-search.service";
 import { createContactRequest } from "../services/contact.service";
 import { getAvailabilityByToken, updateAvailabilityByToken } from "../services/professional-availability.service";
-import { resubmitProfessional } from "../services/admin-moderation.service";
+import { getCorrection, correctProfessional } from "../services/professional-correction.service";
 import { companyAuthMiddleware, type CompanyAuthVariables } from "../middleware/company-auth";
 import { requireVerifiedCompany } from "../middleware/require-verified-company";
+import { consumeRateLimit } from "../services/rate-limit.service";
 
 export const professionalsController = new Hono<{ Bindings: Env; Variables: CompanyAuthVariables }>();
 
@@ -55,6 +57,10 @@ professionalsController.get("/search", companyAuthMiddleware, requireVerifiedCom
   }
 
   const prisma = createPrismaClient(c.env);
+  if (!await consumeRateLimit(prisma, `search:${c.get("companyId")}`, 100)) {
+    c.header("Retry-After", "3600");
+    throw new HttpError(429, "Too Many Requests", "Alcanzó el límite de 100 búsquedas por hora.");
+  }
   const result = await searchProfessionals(parsed.data, prisma);
 
   await prisma.searchLog.create({
@@ -76,6 +82,10 @@ professionalsController.post("/:id/contact", companyAuthMiddleware, requireVerif
   }
 
   const prisma = createPrismaClient(c.env);
+  if (!await consumeRateLimit(prisma, `contact:${c.get("companyId")}`, 30)) {
+    c.header("Retry-After", "3600");
+    throw new HttpError(429, "Too Many Requests", "Alcanzó el límite de solicitudes de contacto por hora.");
+  }
   const result = await createContactRequest(c.req.param("id"), c.get("companyId"), parsed.data.message, prisma);
   return c.json(result);
 });
@@ -98,7 +108,10 @@ professionalsController.post("/availability/:token", async (c) => {
 });
 
 professionalsController.post("/resubmissions/:token", async (c) => {
+  const parsed = professionalCorrectionSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) throw new HttpError(400, "Bad Request", "Revise los campos del perfil.", zodFieldErrors(parsed.error));
   const prisma = createPrismaClient(c.env);
-  await resubmitProfessional(c.req.param("token"), prisma);
-  return c.json({ message: "Su perfil fue reenviado para una nueva revisión." });
+  return c.json(await correctProfessional(c.req.param("token"), parsed.data, prisma, c.env));
 });
+
+professionalsController.get("/resubmissions/:token", async (c) => c.json(await getCorrection(c.req.param("token"), createPrismaClient(c.env))));

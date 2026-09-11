@@ -16,29 +16,18 @@ export async function submitContactFeedback(
 ): Promise<void> {
   const contact = await prisma.contactLog.findUnique({
     where: { id: contactId },
-    select: { id: true, companyId: true, professionalId: true },
+    select: { id: true, companyId: true, professionalId: true, status: true },
   });
 
   if (!contact || contact.companyId !== companyId) {
     throw new HttpError(404, "Not Found", "Solicitud de contacto no encontrada");
   }
 
-  await prisma.contactLog.update({
-    where: { id: contactId },
-    data: { result, feedbackUpdatedAt: new Date() },
-  });
-
-  if (result === "hired") {
-    const professional = await prisma.professional.findUnique({
-      where: { id: contact.professionalId },
-      select: { hiredStatus: true },
-    });
-
-    if (professional?.hiredStatus === "looking") {
-      await prisma.professional.update({
-        where: { id: contact.professionalId },
-        data: { hiredStatus: "hired_externally", hiredAt: new Date(), immediateAvailability: false },
-      });
+  if (contact.status !== "sent") throw new HttpError(409, "Conflict", "La solicitud debe haber sido notificada antes de registrar su resultado.");
+  await prisma.$transaction(async (tx) => {
+    await tx.contactLog.update({ where: { id: contactId }, data: { result, feedbackUpdatedAt: new Date() } });
+    if (result === "hired") {
+      await tx.professional.updateMany({ where: { id: contact.professionalId, hiredStatus: "looking" }, data: { hiredStatus: "hired_via_portal", hiredAt: new Date(), immediateAvailability: false } });
     }
-  }
+  });
 }

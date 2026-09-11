@@ -71,7 +71,7 @@ export async function loginCompany(
   // "type" prevents a company token from being replayed against admin-only
   // routes (or vice versa) â€” see admin-auth.service.ts for the counterpart.
   const token = await sign(
-    { sub: company.id, type: "company", exp: Math.floor(Date.now() / 1000) + TOKEN_TTL_SECONDS },
+    { sub: company.id, type: "company", version: company.sessionVersion, exp: Math.floor(Date.now() / 1000) + TOKEN_TTL_SECONDS },
     jwtSecret,
     "HS256",
   );
@@ -101,5 +101,10 @@ export async function resetCompanyPassword(token: string, password: string, pris
   const tokenHash = await sha256Hex(token);
   const company = await prisma.company.findFirst({ where: { passwordResetTokenHash: tokenHash, passwordResetExpiresAt: { gt: new Date() }, isActive: true }, select: { id: true } });
   if (!company) throw new HttpError(400, "Bad Request", "El enlace no es vÃ¡lido o expirÃ³");
-  await prisma.company.update({ where: { id: company.id }, data: { passwordHash: await hashPassword(password), passwordResetTokenHash: null, passwordResetExpiresAt: null } });
+  const passwordHash = await hashPassword(password);
+  const consumed = await prisma.company.updateMany({
+    where: { id: company.id, passwordResetTokenHash: tokenHash, passwordResetExpiresAt: { gt: new Date() }, isActive: true },
+    data: { passwordHash, passwordResetTokenHash: null, passwordResetExpiresAt: null, sessionVersion: { increment: 1 } },
+  });
+  if (consumed.count !== 1) throw new HttpError(400, "Bad Request", "El enlace no es válido o expiró");
 }

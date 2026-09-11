@@ -1,0 +1,12 @@
+import Link from "next/link";
+
+export default function HelpPage() {
+  return <section className="mx-auto w-full max-w-3xl px-margin-mobile py-12"><h1 className="font-headline text-headline-lg text-primary-container">Ayuda y uso del portal</h1>
+    <div className="mt-6 space-y-8 font-body text-body-md">
+      <section><h2 className="font-headline text-headline-md">Profesionales</h2><p className="mt-3">Registre su perfil y verifique su correo. La CPV revisa el perfil antes de hacerlo visible a las empresas habilitadas. Si requiere ajustes, recibirá un enlace para corregirlo. Una vez aprobado, podrá actualizar su disponibilidad desde el enlace recibido por correo.</p><Link className="mt-3 inline-block underline" href="/register">Registrar mi perfil</Link></section>
+      <section><h2 className="font-headline text-headline-md">Empresas</h2><p className="mt-3">El acceso a la búsqueda y a la publicación de vacantes requiere aprobación de la CPV. Las solicitudes de contacto son revisadas antes de notificar al profesional. El profesional decide si responde a la empresa. La edición y reapertura de una vacante requieren una nueva revisión.</p><Link className="mt-3 inline-block underline" href="/company/login">Acceder como empresa</Link></section>
+      <section id="datos"><h2 className="font-headline text-headline-md">Datos personales</h2><p className="mt-3">El registro recoge datos de identificación, contacto, experiencia y preferencias laborales, junto con su consentimiento. El documento y teléfono del profesional se almacenan cifrados. El personal administrador puede consultarlos para gestionar el registro; estas consultas se registran. La búsqueda de empresas muestra información profesional, sin entregar el correo, teléfono o documento del candidato.</p><p className="mt-3">Los enlaces de correo permiten verificar el registro, corregir un perfil rechazado y actualizar la disponibilidad. Mantenga estos enlaces privados. Para otras solicitudes sobre sus datos, contacte con la Cámara Petrolera de Venezuela por sus canales institucionales.</p></section>
+      <section id="contacto"><h2 className="font-headline text-headline-md">Contacto institucional</h2><p className="mt-3">Consulte los canales oficiales de atención y afiliación en el sitio de la Cámara.</p><a className="mt-3 inline-block underline" href="https://camarapetrolera.org/" target="_blank" rel="noreferrer">Sitio institucional de la CPV</a></section>
+    </div><Link href="/" className="mt-8 inline-block text-primary-container underline">Volver al inicio</Link>
+  </section>;
+}

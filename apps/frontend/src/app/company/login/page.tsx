@@ -71,6 +71,7 @@ export default function CompanyLoginPage() {
           {isSubmitting ? "Ingresando…" : "Ingresar"}
         </button>
       </form>
+      <p className="mt-4 text-center"><Link href="/company/forgot-password" className="text-primary-container underline">Olvidé mi contraseña</Link></p>
 
       <p className="mt-6 text-center font-body text-body-sm text-on-surface-variant">
         ¿No tiene cuenta?{" "}

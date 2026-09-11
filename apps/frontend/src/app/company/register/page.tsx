@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { companyRegistrationSchema, type CompanyRegistrationInput } from "@cpv/shared";
 import { apiFetch, ApiRequestError } from "@/lib/api-client";
 import { PasswordInput } from "@/components/password-input";
+import { TurnstileWidget } from "@/components/turnstile-widget";
 
 const inputClass =
   "w-full rounded border border-outline-variant bg-surface-container-lowest px-4 py-2.5 font-body text-body-md text-on-surface focus:border-primary-container focus:outline-none focus:ring-1 focus:ring-primary-container";
@@ -16,15 +18,23 @@ export default function CompanyRegisterPage() {
   const [submitState, setSubmitState] = useState<"idle" | "loading" | "success">("idle");
   const [successMessage, setSuccessMessage] = useState("");
   const [serverError, setServerError] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaRefresh, setCaptchaRefresh] = useState(0);
 
   const {
     register,
     handleSubmit,
     setError,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<CompanyRegistrationInput>({
     resolver: zodResolver(companyRegistrationSchema),
   });
+
+  const onVerify = useCallback((token: string) => {
+    setCaptchaToken(token);
+    setValue("captcha_token", token, { shouldValidate: true });
+  }, [setValue]);
 
   const onSubmit = async (data: CompanyRegistrationInput) => {
     setServerError(null);
@@ -37,6 +47,8 @@ export default function CompanyRegisterPage() {
       setSuccessMessage(result.message);
       setSubmitState("success");
     } catch (err) {
+      onVerify("");
+      setCaptchaRefresh((value) => value + 1);
       setSubmitState("idle");
       if (err instanceof ApiRequestError) {
         setServerError(err.body.message);
@@ -54,6 +66,7 @@ export default function CompanyRegisterPage() {
       <section className="mx-auto flex max-w-2xl flex-1 flex-col items-center justify-center px-margin-mobile py-24 text-center">
         <h1 className="font-headline text-headline-lg text-primary-container">¡Registro recibido!</h1>
         <p className="mt-4 font-body text-body-lg text-on-surface-variant">{successMessage}</p>
+        <Link href="/company/login" className="mt-6 underline">Volver a iniciar sesión</Link>
       </section>
     );
   }
@@ -99,10 +112,12 @@ export default function CompanyRegisterPage() {
         </div>
 
         {serverError && <p className={errorClass}>{serverError}</p>}
+        <TurnstileWidget key={captchaRefresh} action="company_signup" siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ""} onVerify={onVerify} />
+        {errors.captcha_token && <p className={errorClass}>{errors.captcha_token.message}</p>}
 
         <button
           type="submit"
-          disabled={isSubmitting || submitState === "loading"}
+          disabled={isSubmitting || submitState === "loading" || !captchaToken}
           className="mt-2 w-full rounded-full bg-primary-container px-8 py-4 font-headline text-headline-md text-on-primary transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submitState === "loading" ? "Enviando…" : "Crear Cuenta"}

@@ -60,6 +60,12 @@ export const professionalRegistrationSchema = z.object({
 
 export type ProfessionalRegistrationInput = z.infer<typeof professionalRegistrationSchema>;
 
+export const professionalCorrectionSchema = professionalRegistrationSchema.pick({
+  first_name: true, last_name: true, email: true, phone: true, city: true, state: true,
+  experience_years: true, last_position: true, bio_summary: true,
+}).extend({ phone: z.string().min(6).max(50).optional() });
+export type ProfessionalCorrectionInput = z.infer<typeof professionalCorrectionSchema>;
+
 /** Mirrors GET /api/v1/professionals/search query params — implementation_plan.md §4.3 */
 export const professionalSearchQuerySchema = z.object({
   area_id: z.coerce.number().int().positive().optional(),

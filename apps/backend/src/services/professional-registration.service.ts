@@ -48,6 +48,7 @@ export async function registerProfessional(
     input.captcha_token,
     env.TURNSTILE_SECRET_KEY,
     consentIp ?? undefined,
+    { hostname: new URL(env.FRONTEND_URL).hostname, action: "professional_signup" },
   );
   if (!captchaValid) {
     throw new HttpError(400, "Bad Request", "Verificación de captcha fallida", {

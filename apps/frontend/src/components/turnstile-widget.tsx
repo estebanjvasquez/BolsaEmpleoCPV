@@ -6,6 +6,7 @@ import Script from "next/script";
 interface TurnstileWidgetProps {
   siteKey: string;
   onVerify: (token: string) => void;
+  action?: string;
 }
 
 declare global {
@@ -15,15 +16,17 @@ declare global {
         container: HTMLElement,
         options: {
           sitekey: string;
+          action?: string;
           callback: (token: string) => void;
           "expired-callback"?: () => void;
+          "error-callback"?: () => void;
         },
       ) => string;
     };
   }
 }
 
-export function TurnstileWidget({ siteKey, onVerify }: TurnstileWidgetProps) {
+export function TurnstileWidget({ siteKey, onVerify, action }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const renderedRef = useRef(false);
 
@@ -33,8 +36,10 @@ export function TurnstileWidget({ siteKey, onVerify }: TurnstileWidgetProps) {
       renderedRef.current = true;
       window.turnstile.render(containerRef.current, {
         sitekey: siteKey,
+        action,
         callback: onVerify,
         "expired-callback": () => onVerify(""),
+        "error-callback": () => onVerify(""),
       });
     }
 
@@ -50,7 +55,7 @@ export function TurnstileWidget({ siteKey, onVerify }: TurnstileWidgetProps) {
       }
     }, 100);
     return () => clearInterval(interval);
-  }, [siteKey, onVerify]);
+  }, [siteKey, onVerify, action]);
 
   return (
     <>

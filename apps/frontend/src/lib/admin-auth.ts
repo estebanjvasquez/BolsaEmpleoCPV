@@ -7,8 +7,10 @@ export function getAdminToken(): string | null {
 
 export function setAdminToken(token: string): void {
   window.localStorage.setItem(STORAGE_KEY, token);
+  window.dispatchEvent(new Event("cpv-auth"));
 }
 
 export function clearAdminToken(): void {
   window.localStorage.removeItem(STORAGE_KEY);
+  window.dispatchEvent(new Event("cpv-auth"));
 }

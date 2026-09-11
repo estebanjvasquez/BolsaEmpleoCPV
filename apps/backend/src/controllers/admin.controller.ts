@@ -11,9 +11,13 @@ import { listProfessionalsByStatus, setProfessionalActive, updateProfessionalByA
 import { getAdminStats } from "../services/admin-stats.service";
 import { listCompanies, setCompanyActive, setCompanyStatus, verifyCompany } from "../services/admin-company.service";
 import { createCompanyPasswordReset } from "../services/company-auth.service";
-import { sendCompanyPasswordResetEmail } from "../services/email";
+import { sendCompanyPasswordResetEmail, sendVerificationEmail } from "../services/email";
+import { generateToken, sha256Hex } from "../services/crypto/hmac";
 import { listAdminVacancies, updateVacancyStatus } from "../services/vacancy.service";
 import { vacancyStatusUpdateSchema } from "@cpv/shared";
+import { contactModerationSchema, contactListQuerySchema } from "@cpv/shared";
+import { listAdminContacts, moderateContact } from "../services/admin-contact.service";
+import { processEmailJob } from "../services/email-outbox.service";
 import {
   createArea,
   createCertification,
@@ -44,6 +48,29 @@ function parseIdParam(raw: string): number {
 
 export const adminController = new Hono<{ Bindings: Env; Variables: AdminAuthVariables }>();
 
+adminController.get("/contacts", adminAuthMiddleware, async (c) => {
+  const parsed = contactListQuerySchema.safeParse(c.req.query());
+  if (!parsed.success) throw new HttpError(400, "Bad Request", "Filtro inválido");
+  return c.json({ data: await listAdminContacts(createPrismaClient(c.env), parsed.data.status) });
+});
+adminController.patch("/contacts/:id", adminAuthMiddleware, async (c) => {
+  const parsed = contactModerationSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) throw new HttpError(400, "Bad Request", "Acción inválida");
+  return c.json(await moderateContact(c.req.param("id"), parsed.data.action, c.get("adminId"), createPrismaClient(c.env), c.env));
+});
+adminController.get("/emails", adminAuthMiddleware, async (c) => {
+  const data = await createPrismaClient(c.env).emailJob.findMany({ orderBy: { createdAt: "desc" }, take: 100, select: { id: true, status: true, attempts: true, createdAt: true, acceptedAt: true, contactId: true } });
+  return c.json({ data });
+});
+adminController.post("/emails/:id/retry", adminAuthMiddleware, async (c) => {
+  const prisma = createPrismaClient(c.env);
+  const changed = await prisma.emailJob.updateMany({ where: { id: c.req.param("id"), status: "failed" }, data: { status: "queued", attempts: 0, nextAttemptAt: new Date() } });
+  if (changed.count !== 1) throw new HttpError(409, "Conflict", "Solo puede reintentar envíos fallidos.");
+  await prisma.adminAuditLog.create({ data: { adminId: c.get("adminId"), action: "email_retry", targetType: "email", targetId: c.req.param("id") } });
+  await processEmailJob(prisma, c.env, c.req.param("id"));
+  return c.json({ message: "Reintento registrado." });
+});
+
 adminController.post("/login", async (c) => {
   const body = await c.req.json().catch(() => null);
   const parsed = adminLoginSchema.safeParse(body);
@@ -71,6 +98,17 @@ adminController.get("/professionals", adminAuthMiddleware, async (c) => {
   });
 
   return c.json({ data });
+});
+
+adminController.post("/professionals/:id/verification", adminAuthMiddleware, async (c) => {
+  const prisma = createPrismaClient(c.env);
+  const professional = await prisma.professional.findUnique({ where: { id: c.req.param("id") }, select: { id: true, email: true, firstName: true, emailVerified: true, isActive: true } });
+  if (!professional?.isActive || professional.emailVerified) throw new HttpError(409, "Conflict", "El perfil está inactivo o su correo ya está verificado.");
+  const token = generateToken();
+  await prisma.professional.update({ where: { id: professional.id }, data: { emailVerificationTokenHash: await sha256Hex(token) } });
+  await sendVerificationEmail(c.env, { to: professional.email, firstName: professional.firstName, token });
+  await prisma.adminAuditLog.create({ data: { adminId: c.get("adminId"), action: "professional_verification_queued", targetType: "professional", targetId: professional.id } });
+  return c.json({ message: "Verificación registrada. Consulte su estado en Correos." });
 });
 
 adminController.patch("/professionals/:id/status", adminAuthMiddleware, async (c) => {
@@ -171,7 +209,7 @@ adminController.post("/companies/:id/password-reset", adminAuthMiddleware, async
   const reset = await createCompanyPasswordReset(company.email, prisma);
   if (reset) await sendCompanyPasswordResetEmail(c.env, { to: reset.email, companyName: reset.name, token: reset.token });
   await prisma.adminAuditLog.create({ data: { adminId: c.get("adminId"), action: "company_password_reset_sent", targetType: "company", targetId: c.req.param("id") } });
-  return c.json({ message: "Se enviaron las instrucciones de restablecimiento al correo registrado." }, 202);
+  return c.json({ message: "Solicitud de correo registrada. Consulte su estado en Correos." }, 202);
 });
 
 // --- Catalog CRUD --------------------------------------------------------

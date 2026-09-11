@@ -10,10 +10,10 @@ export async function createContactRequest(
 ) {
   const professional = await prisma.professional.findUnique({
     where: { id: professionalId },
-    select: { id: true, status: true },
+    select: { id: true, status: true, isActive: true, emailVerified: true, hiredStatus: true },
   });
 
-  if (!professional || professional.status !== "approved") {
+  if (!professional || professional.status !== "approved" || !professional.isActive || !professional.emailVerified || professional.hiredStatus !== "looking") {
     throw new HttpError(404, "Not Found", "Profesional no encontrado");
   }
 

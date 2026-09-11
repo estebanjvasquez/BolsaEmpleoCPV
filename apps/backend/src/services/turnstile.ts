@@ -2,6 +2,8 @@ const VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
 interface TurnstileResponse {
   success: boolean;
+  hostname?: string;
+  action?: string;
   "error-codes"?: string[];
 }
 
@@ -10,6 +12,7 @@ export async function verifyTurnstileToken(
   token: string,
   secretKey: string,
   remoteIp?: string,
+  expected?: { hostname: string; action: string },
 ): Promise<boolean> {
   const body = new URLSearchParams({ secret: secretKey, response: token });
   if (remoteIp) body.set("remoteip", remoteIp);
@@ -21,5 +24,5 @@ export async function verifyTurnstileToken(
   });
 
   const result = (await response.json()) as TurnstileResponse;
-  return result.success;
+  return result.success === true && (!expected || (result.hostname === expected.hostname && result.action === expected.action));
 }

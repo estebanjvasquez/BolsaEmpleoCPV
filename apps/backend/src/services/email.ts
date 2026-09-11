@@ -1,4 +1,6 @@
 import type { Env } from "../config/env";
+import { createPrismaClient } from "../config/db";
+import { enqueueEmail, processEmailJob } from "./email-outbox.service";
 
 interface SendVerificationEmailParams {
   to: string;
@@ -12,7 +14,7 @@ interface SendAvailabilityEmailParams {
   token: string;
 }
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value.replace(/[&<>'"]/g, (character) => ({
     "&": "&amp;",
     "<": "&lt;",
@@ -26,19 +28,9 @@ async function sendTransactionalEmail(
   env: Env,
   message: { to: string; subject: string; html: string; text: string },
 ): Promise<void> {
-  try {
-    const result = await env.EMAIL.send({
-      to: message.to,
-      from: { email: env.EMAIL_FROM, name: "Bolsa de Talento CPV" },
-      subject: message.subject,
-      html: message.html,
-      text: message.text,
-    });
-    console.log(`Transactional email accepted for delivery: ${result.messageId}`);
-  } catch (error) {
-    const details = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-    console.error(`Failed to send transactional email: ${details}`);
-  }
+  const prisma = createPrismaClient(env);
+  const job = await enqueueEmail(prisma, env, message);
+  await processEmailJob(prisma, env, job.id);
 }
 
 /** Sends email verification without blocking registration if delivery fails. */

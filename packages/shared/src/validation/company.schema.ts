@@ -7,6 +7,7 @@ export const companyRegistrationSchema = z.object({
   email: z.string().email(),
   phone: z.string().min(1),
   password: z.string().min(8),
+  captcha_token: z.string().min(1),
 });
 
 /** Mirrors POST /api/v1/companies/login — implementation_plan.md §4.2 */

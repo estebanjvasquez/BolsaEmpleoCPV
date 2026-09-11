@@ -10,6 +10,7 @@ import { listCompanyContacts } from "../services/contact.service";
 import { submitContactFeedback } from "../services/company-feedback.service";
 import { companyAuthMiddleware, type CompanyAuthVariables } from "../middleware/company-auth";
 import { requireVerifiedCompany } from "../middleware/require-verified-company";
+import { verifyTurnstileToken } from "../services/turnstile";
 
 export const companiesController = new Hono<{ Bindings: Env; Variables: CompanyAuthVariables }>();
 
@@ -20,6 +21,9 @@ companiesController.post("/register", async (c) => {
     throw new HttpError(400, "Bad Request", "Validation failed", zodFieldErrors(parsed.error));
   }
 
+  if (!await verifyTurnstileToken(parsed.data.captcha_token, c.env.TURNSTILE_SECRET_KEY, c.req.header("cf-connecting-ip"), { hostname: new URL(c.env.FRONTEND_URL).hostname, action: "company_signup" })) {
+    throw new HttpError(400, "Bad Request", "Verificación de captcha fallida", { captcha_token: "Complete de nuevo la verificación." });
+  }
   const prisma = createPrismaClient(c.env);
   const company = await registerCompany(parsed.data, prisma);
 

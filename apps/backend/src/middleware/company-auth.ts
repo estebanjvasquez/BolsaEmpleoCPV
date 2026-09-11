@@ -1,5 +1,6 @@
 import { createMiddleware } from "hono/factory";
 import { verify } from "hono/jwt";
+import { createPrismaClient } from "../config/db";
 import type { Env } from "../config/env";
 import { HttpError } from "../lib/http-error";
 
@@ -28,6 +29,12 @@ export const companyAuthMiddleware = createMiddleware<{ Bindings: Env; Variables
       throw new HttpError(401, "Unauthorized", "Access token is missing or invalid");
     }
 
+    const company = await createPrismaClient(c.env).company.findUnique({
+      where: { id: payload.sub }, select: { isActive: true, sessionVersion: true },
+    });
+    if (!company?.isActive || (payload.version ?? 0) !== company.sessionVersion) {
+      throw new HttpError(401, "Unauthorized", "La sesión expiró. Inicie sesión nuevamente.");
+    }
     c.set("companyId", payload.sub);
     await next();
   },

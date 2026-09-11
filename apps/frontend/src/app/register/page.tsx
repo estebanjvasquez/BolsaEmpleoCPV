@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   documentTypeSchema,
@@ -14,7 +14,7 @@ import {
 import { apiFetch, ApiRequestError } from "@/lib/api-client";
 import { TurnstileWidget } from "@/components/turnstile-widget";
 
-const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "1x00000000000000000000AA";
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
 interface Catalogs {
   areas: { id: number; name: string }[];
@@ -41,6 +41,7 @@ export default function RegisterPage() {
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
   const [catalogsError, setCatalogsError] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaRefresh, setCaptchaRefresh] = useState(0);
   const [submitState, setSubmitState] = useState<"idle" | "loading" | "success">("idle");
   const [successMessage, setSuccessMessage] = useState("");
   const [serverError, setServerError] = useState<string | null>(null);
@@ -55,7 +56,6 @@ export default function RegisterPage() {
     register,
     handleSubmit,
     control,
-    watch,
     setError,
     setValue,
     formState: { errors, isSubmitting },
@@ -75,8 +75,8 @@ export default function RegisterPage() {
     name: "languages",
   });
 
-  const selectedAreaId = watch("area_id");
-  const selectedState = watch("state");
+  const selectedAreaId = useWatch({ control, name: "area_id" });
+  const selectedState = useWatch({ control, name: "state" });
 
   const handleVerify = useCallback(
     (token: string) => {
@@ -97,6 +97,8 @@ export default function RegisterPage() {
       setSuccessMessage(result.message);
       setSubmitState("success");
     } catch (err) {
+      handleVerify("");
+      setCaptchaRefresh((value) => value + 1);
       setSubmitState("idle");
       if (err instanceof ApiRequestError) {
         setServerError(err.body.message);
@@ -401,7 +403,7 @@ export default function RegisterPage() {
           {errors.consent_given && <p className={errorClass}>{errors.consent_given.message}</p>}
 
           <div className="mt-6">
-            <TurnstileWidget siteKey={TURNSTILE_SITE_KEY} onVerify={handleVerify} />
+            <TurnstileWidget key={captchaRefresh} action="professional_signup" siteKey={TURNSTILE_SITE_KEY} onVerify={handleVerify} />
           </div>
 
           {serverError && <p className={`${errorClass} mt-4`}>{serverError}</p>}

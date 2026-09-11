@@ -9,11 +9,11 @@ export const errorHandler: ErrorHandler = (err, c) => {
       err.status,
     );
   }
-  console.error(err);
+  console.error(JSON.stringify({ event: "request_failed", type: err.name }));
   return c.json(
     {
       error: "Internal Server Error",
-      message: err.message ?? "Unexpected error",
+      message: "No se pudo procesar la solicitud. Inténtelo de nuevo más tarde.",
     },
     500,
   );

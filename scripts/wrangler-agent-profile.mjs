@@ -26,7 +26,8 @@ if (wranglerArgs.length === 0) {
 const xdgConfigHome = path.join(repoRoot, ".wrangler-agent", "config");
 const npmCache = path.join(repoRoot, ".wrangler-agent", "npm-cache");
 const workspaceRoot = workspacePaths[workspace];
-const wranglerBin = path.join(workspaceRoot, "node_modules", "wrangler", "bin", "wrangler.js");
+const localBin = path.join(workspaceRoot, "node_modules", "wrangler", "bin", "wrangler.js");
+const wranglerBin = existsSync(localBin) ? localBin : path.join(repoRoot, "node_modules", "wrangler", "bin", "wrangler.js");
 
 if (!existsSync(wranglerBin)) {
   console.error(`Wrangler is not installed for ${workspace}: ${wranglerBin}`);

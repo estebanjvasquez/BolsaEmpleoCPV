@@ -6,7 +6,7 @@ import { sha256Hex } from "./crypto/hmac";
 export async function getAvailabilityByToken(token: string, prisma: PrismaClient) {
   const tokenHash = await sha256Hex(token);
   const professional = await prisma.professional.findFirst({
-    where: { availabilityTokenHash: tokenHash },
+    where: { availabilityTokenHash: tokenHash, isActive: true, emailVerified: true, status: "approved" },
     select: { firstName: true, lastName: true, hiredStatus: true },
   });
 
@@ -34,7 +34,7 @@ export async function updateAvailabilityByToken(
 ): Promise<void> {
   const tokenHash = await sha256Hex(token);
   const professional = await prisma.professional.findFirst({
-    where: { availabilityTokenHash: tokenHash },
+    where: { availabilityTokenHash: tokenHash, isActive: true, emailVerified: true, status: "approved" },
     select: { id: true },
   });
 

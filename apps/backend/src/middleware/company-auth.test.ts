@@ -1,11 +1,14 @@
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { companyAuthMiddleware, type CompanyAuthVariables } from "./company-auth";
 import { errorHandler } from "./errorHandler";
 import type { Env } from "../config/env";
 
-const JWT_SECRET = "test-secret";
+const JWT_SECRET = "test-secret-with-at-least-thirty-two-characters";
+const { findUnique } = vi.hoisted(() => ({ findUnique: vi.fn() }));
+vi.mock("../config/db", () => ({ createPrismaClient: () => ({ company: { findUnique } }) }));
+beforeEach(() => { findUnique.mockResolvedValue({ isActive: true, sessionVersion: 0 }); });
 
 function buildApp() {
   const app = new Hono<{ Bindings: Env; Variables: CompanyAuthVariables }>();
@@ -15,6 +18,16 @@ function buildApp() {
 }
 
 describe("companyAuthMiddleware", () => {
+  it("rejects sessions revoked by password reset", async () => {
+    findUnique.mockResolvedValue({ isActive: true, sessionVersion: 1 });
+    const token = await sign({ sub: "company-123", type: "company", version: 0, exp: Math.floor(Date.now()/1000)+3600 }, JWT_SECRET);
+    expect((await buildApp().request("/protected", { headers: { Authorization: `Bearer ${token}` } }, { JWT_SECRET } as Env)).status).toBe(401);
+  });
+  it("rejects deactivated companies with an otherwise valid token", async () => {
+    findUnique.mockResolvedValue({ isActive: false, sessionVersion: 0 });
+    const token = await sign({ sub: "company-123", type: "company", exp: Math.floor(Date.now()/1000)+3600 }, JWT_SECRET);
+    expect((await buildApp().request("/protected", { headers: { Authorization: `Bearer ${token}` } }, { JWT_SECRET } as Env)).status).toBe(401);
+  });
   it("rejects requests with no Authorization header", async () => {
     const app = buildApp();
     const res = await app.request("/protected", {}, { JWT_SECRET } as Env);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { apiFetch, ApiRequestError } from "@/lib/api-client";
 import { getCompanyToken } from "@/lib/company-auth";
@@ -12,8 +12,8 @@ const input = "w-full rounded border border-outline-variant bg-surface-container
 export default function CompanyVacanciesPage() {
   const [areas, setAreas] = useState<Area[]>([]); const [items, setItems] = useState<Vacancy[]>([]); const [message, setMessage] = useState<string | null>(null); const [editing, setEditing] = useState<string | null>(null);
   const headers = () => ({ Authorization: `Bearer ${getCompanyToken()}` });
-  const load = () => { if (!getCompanyToken()) return; apiFetch<{ data: Vacancy[] }>("/api/v1/vacancies/mine", { headers: headers() }).then((r) => setItems(r.data)).catch(() => setMessage("No se pudieron cargar sus vacantes.")); };
-  useEffect(() => { apiFetch<{ areas: Area[] }>("/api/v1/catalogs").then((r) => setAreas(r.areas)); load(); }, []);
+  const load = useCallback(() => { if (!getCompanyToken()) return; apiFetch<{ data: Vacancy[] }>("/api/v1/vacancies/mine", { headers: headers() }).then((r) => setItems(r.data)).catch(() => setMessage("No se pudieron cargar sus vacantes.")); }, []);
+  useEffect(() => { apiFetch<{ areas: Area[] }>("/api/v1/catalogs").then((r) => setAreas(r.areas)).catch(() => setMessage("No se pudieron cargar las áreas.")); load(); }, [load]);
   const payload = (form: FormData) => ({ title: form.get("title"), description: form.get("description"), location: form.get("location"), area_id: Number(form.get("area_id")), employment_type: form.get("employment_type"), experience_years: Number(form.get("experience_years")), deadline: form.get("deadline") || undefined, external_application_url: form.get("external_application_url") || null });
   const create = async (form: FormData) => { setMessage(null); try { await apiFetch("/api/v1/vacancies", { method: "POST", headers: headers(), body: JSON.stringify(payload(form)) }); setMessage("Vacante enviada para aprobación."); form.set("title", ""); load(); } catch (error) { setMessage(error instanceof ApiRequestError ? error.body.message : "No se pudo crear la vacante."); } };
   const update = async (id: string, form: FormData) => { try { await apiFetch(`/api/v1/vacancies/${id}`, { method: "PATCH", headers: headers(), body: JSON.stringify(payload(form)) }); setEditing(null); setMessage("Cambios enviados para nueva aprobación."); load(); } catch (error) { setMessage(error instanceof ApiRequestError ? error.body.message : "No se pudo actualizar la vacante."); } };

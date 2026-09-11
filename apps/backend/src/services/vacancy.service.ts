@@ -70,7 +70,7 @@ export async function listCompanyVacancies(companyId: string, prisma: PrismaClie
 
 export async function listPublicVacancies(prisma: PrismaClient) {
   const data = await prisma.vacancy.findMany({
-    where: { status: "approved", OR: [{ deadline: null }, { deadline: { gte: new Date() } }] },
+    where: { status: "approved", company: { isActive: true, isVerified: true, status: "approved" }, OR: [{ deadline: null }, { deadline: { gte: new Date() } }] },
     orderBy: { createdAt: "desc" },
     include: { company: { select: { name: true } }, area: { select: { name: true } } },
   });

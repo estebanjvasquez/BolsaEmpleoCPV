@@ -24,11 +24,11 @@
     "@hookform/resolvers": "^3.9.0",
     "@node-minify/core": "^8.0.6",
     "@node-minify/terser": "^8.0.6",
-    "@opennextjs/cloudflare": "^1.20.1",
+    "@opennextjs/cloudflare": "1.20.6",
     "@tsconfig/node18": "^1.0.3",
     "aws4fetch": "^1.0.20",
     "express": "^5.2.1",
-    "next": "16.2.10",
+    "next": "16.3.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.54.0",
@@ -43,9 +43,9 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.10",
+    "eslint-config-next": "16.3.4",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "wrangler": "^4.112.0"
+    "wrangler": "4.131.0"
   }
 }

@@ -6,6 +6,16 @@ afterEach(() => {
 });
 
 describe("verifyTurnstileToken", () => {
+  it("rejects valid challenges issued for another hostname or action", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true, hostname: "localhost", action: "company_signup" }))));
+    await expect(verifyTurnstileToken("token", "secret", undefined, { hostname: "talento.camarapetrolera.app", action: "company_signup" })).resolves.toBe(false);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true, hostname: "talento.camarapetrolera.app", action: "professional_signup" }))));
+    await expect(verifyTurnstileToken("token", "secret", undefined, { hostname: "talento.camarapetrolera.app", action: "company_signup" })).resolves.toBe(false);
+  });
+  it("accepts the expected production hostname and action", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true, hostname: "talento.camarapetrolera.app", action: "company_signup" }))));
+    await expect(verifyTurnstileToken("token", "secret", undefined, { hostname: "talento.camarapetrolera.app", action: "company_signup" })).resolves.toBe(true);
+  });
   it("returns true when Cloudflare reports success", async () => {
     vi.stubGlobal(
       "fetch",

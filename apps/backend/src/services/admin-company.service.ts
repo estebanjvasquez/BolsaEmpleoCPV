@@ -24,7 +24,7 @@ export async function listCompanies(status: CompanyStatus | undefined, prisma: P
 }
 
 export async function setCompanyActive(id: string, isActive: boolean, adminId: string, prisma: PrismaClient) {
-  const company = await prisma.company.update({ where: { id }, data: { isActive, ...(isActive ? {} : { passwordResetTokenHash: null, passwordResetExpiresAt: null }) }, select: { id: true, isActive: true } }).catch(() => null);
+  const company = await prisma.company.update({ where: { id }, data: { isActive, ...(isActive ? {} : { passwordResetTokenHash: null, passwordResetExpiresAt: null, sessionVersion: { increment: 1 } }) }, select: { id: true, isActive: true } }).catch(() => null);
   if (!company) throw new HttpError(404, "Not Found", "Empresa no encontrada");
   await prisma.adminAuditLog.create({ data: { adminId, action: isActive ? "company_activated" : "company_deactivated", targetType: "company", targetId: id } });
   return { id: company.id, is_active: company.isActive };

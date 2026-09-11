@@ -22,6 +22,8 @@
     "node": ">=20"
   },
   "overrides": {
-    "zod": "3.25.76"
+    "zod": "3.25.76",
+    "deepmerge-ts": "8.0.0",
+    "wrangler": "4.131.0"
   }
 }

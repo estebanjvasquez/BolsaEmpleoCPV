@@ -8,6 +8,8 @@ import { companiesController } from "./controllers/companies.controller";
 import { adminController } from "./controllers/admin.controller";
 import { catalogsController } from "./controllers/catalogs.controller";
 import { vacanciesController } from "./controllers/vacancies.controller";
+import { processEmailQueue } from "./services/email-outbox.service";
+import { publicRateLimit } from "./middleware/rate-limit";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -30,6 +32,7 @@ app.get("/health/db", async (c) => {
   return c.json({ status: "ok", areaCount });
 });
 
+app.use("/api/*", publicRateLimit);
 app.route("/api/v1/professionals", professionalsController);
 app.route("/api/v1/companies", companiesController);
 app.route("/api/v1/admin", adminController);
@@ -38,4 +41,10 @@ app.route("/api/v1/vacancies", vacanciesController);
 
 // Future routes mount here as controllers land (BE-7, BE-9, BE-10, implementation_plan.md §8).
 
-export default app;
+export default {
+  fetch: app.fetch,
+  scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(processEmailQueue(env));
+  },
+};
+export { app };

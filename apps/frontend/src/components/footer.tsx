@@ -16,28 +16,28 @@ export function Footer() {
         <div>
           <h4 className="mb-4 font-label text-label-md text-on-primary-fixed">Enlaces de Interés</h4>
           <nav className="flex flex-col gap-2">
-            <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="#">
+            <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="https://camarapetrolera.org/">
               Afiliación
             </a>
-            <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="#">
+            <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="/company/login">
               Empresas
             </a>
-            <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="#">
+            <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="/register">
               Talento
             </a>
-            <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="#">
+            <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="/ayuda#contacto">
               Contacto
             </a>
           </nav>
         </div>
         <div>
-          <h4 className="mb-4 font-label text-label-md text-on-primary-fixed">Legal</h4>
+          <h4 className="mb-4 font-label text-label-md text-on-primary-fixed">Información</h4>
           <nav className="flex flex-col gap-2">
-            <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="#">
-              Privacidad
+            <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="/ayuda#datos">
+              Datos personales
             </a>
-            <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="#">
-              Términos de Servicio
+            <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="/ayuda">
+              Uso del portal
             </a>
           </nav>
         </div>

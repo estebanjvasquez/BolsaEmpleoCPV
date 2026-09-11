@@ -24,3 +24,9 @@ name = "EMAIL"
 ENVIRONMENT = "production"
 FRONTEND_URL = "https://talento.camarapetrolera.app"
 EMAIL_FROM = "no-reply@talento.camarapetrolera.app"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[observability]
+enabled = true

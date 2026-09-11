@@ -19,6 +19,9 @@ export const professionalStatusUpdateSchema = z
 
 export const activeStateUpdateSchema = z.object({ is_active: z.boolean() });
 
+export const contactModerationSchema = z.object({ action: z.enum(["send", "block"]) });
+export const contactListQuerySchema = z.object({ status: z.enum(["pending_admin", "sent", "blocked"]).default("pending_admin") });
+
 export const professionalAdminUpdateSchema = z.object({
   city: z.string().min(1).max(100).optional(),
   state: z.string().min(1).max(100).optional(),

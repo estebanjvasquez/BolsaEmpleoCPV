@@ -7,8 +7,10 @@ export function getCompanyToken(): string | null {
 
 export function setCompanyToken(token: string): void {
   window.localStorage.setItem(STORAGE_KEY, token);
+  window.dispatchEvent(new Event("cpv-auth"));
 }
 
 export function clearCompanyToken(): void {
   window.localStorage.removeItem(STORAGE_KEY);
+  window.dispatchEvent(new Event("cpv-auth"));
 }

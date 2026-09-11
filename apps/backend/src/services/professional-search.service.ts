@@ -17,6 +17,7 @@ function buildWhere(query: ProfessionalSearchQuery): Prisma.ProfessionalWhereInp
   return {
     status: "approved",
     isActive: true,
+    emailVerified: true,
     // Hidden from companies once hired, whether self-reported (§4.8) or
     // company-reported (§4.9) — see professional-availability.service.ts /
     // company-feedback.service.ts.

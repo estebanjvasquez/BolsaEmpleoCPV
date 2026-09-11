@@ -116,6 +116,7 @@ model Company {
   isActive     Boolean       @default(true) @map("is_active")
   passwordResetTokenHash String? @map("password_reset_token_hash") @db.Char(64)
   passwordResetExpiresAt DateTime? @map("password_reset_expires_at")
+  sessionVersion Int @default(0) @map("session_version")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
   searches     SearchLog[]
@@ -287,4 +288,27 @@ model PiiAccessLog {
   createdAt      DateTime     @default(now()) @map("created_at")
 
   @@map("pii_access_log")
+}
+
+model EmailJob {
+  id String @id @default(uuid())
+  payloadEncrypted String @map("payload_encrypted")
+  dedupeKey String? @unique @map("dedupe_key")
+  contactId String? @map("contact_id")
+  status String @default("queued")
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now()) @map("next_attempt_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  acceptedAt DateTime? @map("accepted_at")
+  providerId String? @map("provider_id")
+  @@index([status, nextAttemptAt])
+  @@map("email_jobs")
+}
+
+model ApiRateLimit {
+  key String @id
+  hits Int @default(1)
+  expiresAt DateTime @map("expires_at")
+  @@index([expiresAt])
+  @@map("api_rate_limits")
 }

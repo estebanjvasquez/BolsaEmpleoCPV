@@ -10,10 +10,10 @@ export const requireVerifiedCompany = createMiddleware<{ Bindings: Env; Variable
     const prisma = createPrismaClient(c.env);
     const company = await prisma.company.findUnique({
       where: { id: c.get("companyId") },
-      select: { isVerified: true, isActive: true },
+      select: { isVerified: true, isActive: true, status: true },
     });
 
-    if (!company?.isVerified || !company.isActive) {
+    if (!company?.isVerified || !company.isActive || company.status !== "approved") {
       throw new HttpError(
         403,
         "Forbidden",

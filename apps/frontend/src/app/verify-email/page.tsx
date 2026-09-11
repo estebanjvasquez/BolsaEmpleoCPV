@@ -10,15 +10,11 @@ type VerificationState = "loading" | "success" | "error";
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const token = useMemo(() => searchParams.get("token") ?? "", [searchParams]);
-  const [state, setState] = useState<VerificationState>("loading");
-  const [message, setMessage] = useState("Validando su correo electrónico...");
+  const [requestState, setState] = useState<VerificationState>("loading");
+  const [requestMessage, setMessage] = useState("Validando su correo electrónico...");
 
   useEffect(() => {
-    if (!token) {
-      setState("error");
-      setMessage("El enlace de verificación no incluye un token válido.");
-      return;
-    }
+    if (!token) return;
 
     apiFetch<{ message: string }>(`/api/v1/professionals/verify/${encodeURIComponent(token)}`)
       .then((result) => {
@@ -31,6 +27,8 @@ function VerifyEmailContent() {
       });
   }, [token]);
 
+  const state = token ? requestState : "error";
+  const message = token ? requestMessage : "El enlace de verificación no incluye un token válido.";
   return (
     <section className="mx-auto flex max-w-lg flex-1 flex-col items-center justify-center px-margin-mobile py-24 text-center">
       <p className="mb-4 font-label text-label-sm uppercase tracking-wide text-secondary-container">
