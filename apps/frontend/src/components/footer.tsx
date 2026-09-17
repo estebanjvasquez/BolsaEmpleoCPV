@@ -36,12 +36,9 @@ export function Footer() {
         <div>
           <h4 className="mb-4 font-label text-label-md text-on-primary-fixed">{t("Información")}</h4>
           <nav className="flex flex-col gap-2">
-            <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="/ayuda#datos">
-              {t("Datos personales")}
-            </a>
-            <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="/ayuda">
-              {t("Uso del portal")}
-            </a>
+            <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="/privacidad">{t("Política de privacidad")}</a>
+            <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="/terminos">{t("Términos y condiciones")}</a>
+            <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="/uso-portal">{t("Uso del portal")}</a>
           </nav>
         </div>
       </div>
