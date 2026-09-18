@@ -59,10 +59,13 @@ companiesController.post("/password-resets", async (c) => {
 });
 
 companiesController.post("/password-resets/:token", async (c) => {
+  if (!/^[a-f0-9]{64}$/i.test(c.req.param("token").trim())) {
+    throw new HttpError(400, "Bad Request", "El enlace no es válido o expiró");
+  }
   const parsed = companyPasswordResetSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) throw new HttpError(400, "Bad Request", "Validation failed", zodFieldErrors(parsed.error));
   const prisma = createPrismaClient(c.env);
-  await resetCompanyPassword(c.req.param("token"), parsed.data.password, prisma);
+  await resetCompanyPassword(c.req.param("token").trim(), parsed.data.password, prisma);
   return c.json({ message: "Contraseña actualizada correctamente." });
 });
 

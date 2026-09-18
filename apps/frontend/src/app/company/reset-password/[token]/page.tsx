@@ -17,7 +17,7 @@ export default function ResetPasswordPage({ params }: { params: Promise<{ token:
 
     try {
       const { token } = await params;
-      await apiFetch(`/api/v1/companies/password-resets/${token}`, {
+      await apiFetch(`/api/v1/companies/password-resets/${encodeURIComponent(token.trim())}`, {
         method: "POST",
         body: JSON.stringify({ password }),
       });
@@ -31,6 +31,7 @@ export default function ResetPasswordPage({ params }: { params: Promise<{ token:
   return (
     <section className="mx-auto max-w-md px-margin-mobile py-20">
       <h1 className="font-headline text-headline-lg text-primary-container">Restablecer acceso</h1>
+      <p className="mt-3 font-body text-body-sm text-on-surface-variant">El enlace dura una hora. Si solicitó más de uno, solo el correo más reciente es válido.</p>
       {completed ? (
         <div className="mt-6 rounded-xl border border-border-subtle bg-surface-container-lowest p-6">
           <p className="font-body text-body-md text-on-surface">{message}</p>

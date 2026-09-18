@@ -24,7 +24,9 @@ export function Header() {
         <div className="flex flex-wrap items-center justify-end gap-3">
           <LanguageSwitcher />
           <Link href="/vacantes" className="font-label text-label-md font-medium text-[#344250] transition-colors hover:text-[#8b5d17]">{t("Vacantes")}</Link>
-          <Link href={role === "admin" ? "/admin" : role === "company" ? "/search" : "/company/login"} className="rounded-md bg-[#17212c] px-4 py-2 font-label text-label-sm text-white transition hover:bg-[#344250] active:translate-y-px">{t(role === "admin" ? "Administración" : role === "company" ? "Mi panel" : "Ingresar")}</Link>
+          {role === "public" && <><Link href="/register" className="font-label text-label-md font-medium text-[#344250] transition-colors hover:text-[#8b5d17]">{t("Profesionales")}</Link><Link href="/company/login" className="rounded-md bg-[#17212c] px-4 py-2 font-label text-label-sm text-white transition hover:bg-[#344250] active:translate-y-px">{t("Empresas")}</Link></>}
+          {role === "company" && <Link href="/search" className="rounded-md bg-[#17212c] px-4 py-2 font-label text-label-sm text-white transition hover:bg-[#344250] active:translate-y-px">{t("Mi panel")}</Link>}
+          {role === "admin" && <Link href="/admin" className="font-label text-label-md font-medium text-[#344250] transition-colors hover:text-[#8b5d17]">{t("Administración")}</Link>}
         </div>
       </div>
     </header>

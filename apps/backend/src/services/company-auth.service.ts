@@ -102,7 +102,11 @@ export async function createCompanyPasswordReset(email: string, prisma: PrismaCl
 }
 
 export async function resetCompanyPassword(token: string, password: string, prisma: PrismaClient) {
-  const tokenHash = await sha256Hex(token);
+  // Tokens are hexadecimal and are generated in lowercase. Normalizing makes
+  // links resilient to mail clients that capitalize a URL while keeping the
+  // stored value and one-time semantics unchanged.
+  const normalizedToken = token.trim().toLowerCase();
+  const tokenHash = await sha256Hex(normalizedToken);
   const company = await prisma.company.findFirst({ where: { passwordResetTokenHash: tokenHash, passwordResetExpiresAt: { gt: new Date() }, isActive: true }, select: { id: true } });
   if (!company) throw new HttpError(400, "Bad Request", "El enlace no es válido o expiró");
   const passwordHash = await hashPassword(password);

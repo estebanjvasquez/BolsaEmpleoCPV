@@ -39,6 +39,7 @@ export function Footer() {
             <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="/privacidad">{t("Política de privacidad")}</a>
             <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="/terminos">{t("Términos y condiciones")}</a>
             <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="/uso-portal">{t("Uso del portal")}</a>
+            <a className="font-body text-body-sm text-on-primary-container transition-colors hover:text-secondary-fixed-dim" href="/admin/login">{t("Administración")}</a>
           </nav>
         </div>
       </div>
