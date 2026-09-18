@@ -13,6 +13,7 @@ const inputClass =
   "w-full rounded border border-outline-variant bg-surface-container-lowest px-4 py-2.5 font-body text-body-md text-on-surface focus:border-primary-container focus:outline-none focus:ring-1 focus:ring-primary-container";
 const labelClass = "mb-1.5 block font-label text-label-md text-on-surface-variant";
 const errorClass = "mt-1 font-body text-body-sm text-error";
+const businessAreas = ["Oil & Gas", "Generación eléctrica", "Energías renovables", "Servicios industriales", "Ingeniería y proyectos", "Tecnología y automatización"] as const;
 
 export default function CompanyRegisterPage() {
   const [submitState, setSubmitState] = useState<"idle" | "loading" | "success">("idle");
@@ -29,6 +30,7 @@ export default function CompanyRegisterPage() {
     formState: { errors, isSubmitting },
   } = useForm<CompanyRegistrationInput>({
     resolver: zodResolver(companyRegistrationSchema),
+    defaultValues: { business_areas: [], energy_services: [], website: "" },
   });
 
   const onVerify = useCallback((token: string) => {
@@ -104,6 +106,27 @@ export default function CompanyRegisterPage() {
           <label className={labelClass}>Teléfono</label>
           <input placeholder="+58 261 7000000" className={inputClass} {...register("phone")} />
           {errors.phone && <p className={errorClass}>{errors.phone.message}</p>}
+        </div>
+        <fieldset>
+          <legend className={labelClass}>Líneas de negocio relacionadas con energía</legend>
+          <div className="grid gap-2 sm:grid-cols-2">{businessAreas.map((area) => <label key={area} className="flex items-center gap-2 font-body text-body-sm"><input type="checkbox" value={area} {...register("business_areas")} />{area}</label>)}</div>
+          {errors.business_areas && <p className={errorClass}>{errors.business_areas.message}</p>}
+        </fieldset>
+        <div>
+          <label className={labelClass}>Servicios o capacidades técnicas</label>
+          <input placeholder="Ej.: mantenimiento de pozos, SCADA, ingeniería EPC" className={inputClass} onChange={(event) => setValue("energy_services", event.target.value.split(",").map((value) => value.trim()).filter(Boolean), { shouldValidate: true })} />
+          <p className="mt-1 font-body text-body-sm text-on-surface-variant">Separe los servicios con comas.</p>
+          {errors.energy_services && <p className={errorClass}>{errors.energy_services.message}</p>}
+        </div>
+        <div>
+          <label className={labelClass}>Descripción de actividades y experiencia sectorial</label>
+          <textarea rows={5} className={inputClass} {...register("business_description")} />
+          {errors.business_description && <p className={errorClass}>{errors.business_description.message}</p>}
+        </div>
+        <div>
+          <label className={labelClass}>Sitio web (opcional)</label>
+          <input type="url" placeholder="https://empresa.com" className={inputClass} {...register("website")} />
+          {errors.website && <p className={errorClass}>{errors.website.message}</p>}
         </div>
         <div>
           <label className={labelClass}>Contraseña</label>

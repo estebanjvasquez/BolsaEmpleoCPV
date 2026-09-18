@@ -110,6 +110,10 @@ model Company {
   rif          String        @unique @db.VarChar(20)
   email        String        @unique @db.VarChar(150)
   phone        String        @db.VarChar(50)
+  businessAreas String[]     @default([]) @map("business_areas")
+  energyServices String[]    @default([]) @map("energy_services")
+  businessDescription String? @map("business_description") @db.Text
+  website      String?       @db.VarChar(500)
   passwordHash String        @map("password_hash") @db.VarChar(255)
   isVerified   Boolean       @default(false) @map("is_verified")
   status       CompanyStatus @default(pending)

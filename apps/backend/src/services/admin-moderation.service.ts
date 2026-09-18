@@ -6,6 +6,7 @@ import { HttpError } from "../lib/http-error";
 import { decrypt } from "./crypto/encryption";
 import { generateToken, sha256Hex } from "./crypto/hmac";
 import { sendAvailabilityEmail, sendResubmissionEmail } from "./email";
+import { calculateSectorFit } from "./admin-sector-fit.service";
 
 interface ListDeps {
   prisma: PrismaClient;
@@ -35,10 +36,24 @@ export async function listProfessionalsByStatus(status: ProfessionalStatus, { pr
       status: true,
       isActive: true,
       createdAt: true,
+      city: true,
+      state: true,
+      experienceYears: true,
+      lastPosition: true,
+      bioSummary: true,
+      educationLevel: true,
+      relocationWilling: true,
+      immediateAvailability: true,
+      jobTypesWilling: true,
+      sector: { select: { name: true } },
+      area: { select: { name: true } },
+      subarea: { select: { name: true } },
+      certifications: { select: { certification: { select: { name: true } } } },
+      languages: { select: { language: true, level: true } },
     },
   });
 
-  // Pure crypto, no DB round-trip — safe to run concurrently, unlike Prisma queries.
+  // Pure crypto, no DB round-trip â€” safe to run concurrently, unlike Prisma queries.
   const data = await Promise.all(
     professionals.map(async (p) => ({
       id: p.id,
@@ -52,6 +67,21 @@ export async function listProfessionalsByStatus(status: ProfessionalStatus, { pr
       status: p.status,
       is_active: p.isActive,
       created_at: p.createdAt.toISOString(),
+      city: p.city,
+      state: p.state,
+      experience_years: p.experienceYears,
+      last_position: p.lastPosition,
+      bio_summary: p.bioSummary,
+      education_level: p.educationLevel,
+      relocation_willing: p.relocationWilling,
+      immediate_availability: p.immediateAvailability,
+      job_types_willing: p.jobTypesWilling,
+      sector: p.sector.name,
+      area: p.area.name,
+      subarea: p.subarea.name,
+      certifications: p.certifications.map((item) => item.certification.name),
+      languages: p.languages.map((item) => `${item.language} · ${item.level}`),
+      sector_fit: calculateSectorFit({ sector: p.sector.name, area: p.area.name, subarea: p.subarea.name, lastPosition: p.lastPosition, bioSummary: p.bioSummary, certifications: p.certifications.map((item) => item.certification.name), experienceYears: p.experienceYears }),
     })),
   );
 
@@ -78,7 +108,7 @@ interface UpdateStatusDeps {
 /**
  * Updates moderation status. The first time a profile is approved, mints a
  * persistent availability token (implementation_plan.md §4.8) and emails it
- * — subsequent approvals (e.g. after a rejection is reversed) reuse the
+ * â€” subsequent approvals (e.g. after a rejection is reversed) reuse the
  * existing token rather than invalidating a link the candidate may have saved.
  */
 export async function updateProfessionalStatus(

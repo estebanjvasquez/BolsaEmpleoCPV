@@ -1,13 +1,14 @@
 import type { PrismaClient } from "@prisma/client";
 import type { CompanyStatus } from "@prisma/client";
 import { HttpError } from "../lib/http-error";
+import { calculateSectorFit } from "./admin-sector-fit.service";
 
 /** Lists companies for admin review, optionally filtered by moderation status. */
 export async function listCompanies(status: CompanyStatus | undefined, prisma: PrismaClient) {
   const companies = await prisma.company.findMany({
     where: status === undefined ? undefined : { status },
     orderBy: { createdAt: "asc" },
-    select: { id: true, name: true, rif: true, email: true, phone: true, isVerified: true, isActive: true, status: true, createdAt: true },
+    select: { id: true, name: true, rif: true, email: true, phone: true, businessAreas: true, energyServices: true, businessDescription: true, website: true, isVerified: true, isActive: true, status: true, createdAt: true },
   });
 
   return companies.map((c) => ({
@@ -20,6 +21,11 @@ export async function listCompanies(status: CompanyStatus | undefined, prisma: P
     is_active: c.isActive,
     status: c.status,
     created_at: c.createdAt.toISOString(),
+    business_areas: c.businessAreas,
+    energy_services: c.energyServices,
+    business_description: c.businessDescription,
+    website: c.website,
+    sector_fit: calculateSectorFit({ businessAreas: c.businessAreas, energyServices: c.energyServices, businessDescription: c.businessDescription, website: c.website }),
   }));
 }
 

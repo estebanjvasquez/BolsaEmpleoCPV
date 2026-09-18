@@ -26,7 +26,12 @@ interface AdminProfessional {
   status: ProfessionalStatus;
   is_active: boolean;
   created_at: string;
+  city: string; state: string; experience_years: number; last_position: string; bio_summary: string; education_level: string;
+  relocation_willing: boolean; immediate_availability: boolean; job_types_willing: string[]; sector: string; area: string; subarea: string; certifications: string[]; languages: string[];
+  sector_fit: SectorFit;
 }
+
+interface SectorFit { score: number; band: "Alta" | "Media" | "Inicial"; signals: string[]; considerations: string[] }
 
 interface AdminCompany {
   id: string;
@@ -38,6 +43,7 @@ interface AdminCompany {
   is_active: boolean;
   status: CompanyStatus;
   created_at: string;
+  business_areas: string[]; energy_services: string[]; business_description: string | null; website: string | null; sector_fit: SectorFit;
 }
 
 interface AdminVacancy {
@@ -68,6 +74,11 @@ const COMPANY_STATUS_BADGE: Record<CompanyStatus, string> = {
   approved: "bg-secondary-container text-white",
   rejected: "bg-error-container text-on-error-container",
 };
+
+function SectorFitBadge({ fit }: { fit: SectorFit }) {
+  const color = fit.band === "Alta" ? "bg-secondary-container text-white" : fit.band === "Media" ? "bg-secondary-fixed text-on-secondary-fixed" : "bg-surface-container text-on-surface-variant";
+  return <div><span className={`rounded-full px-2.5 py-1 font-label text-label-sm ${color}`}>{fit.score}% · {fit.band}</span><p className="mt-1 font-body text-xs text-on-surface-variant">Afinidad estimada, no decisión automática</p></div>;
+}
 
 function AdminContent() {
   const router = useRouter();
@@ -272,6 +283,7 @@ function AdminContent() {
               <th className="px-4 py-3 font-label text-label-sm text-on-surface-variant">Nombre</th>
               <th className="px-4 py-3 font-label text-label-sm text-on-surface-variant">Documento</th>
               <th className="px-4 py-3 font-label text-label-sm text-on-surface-variant">Contacto</th>
+              <th className="px-4 py-3 font-label text-label-sm text-on-surface-variant">Afinidad sectorial</th>
               <th className="px-4 py-3 font-label text-label-sm text-on-surface-variant">Estado</th>
               <th className="px-4 py-3 font-label text-label-sm text-on-surface-variant">Acciones</th>
             </tr>
@@ -279,14 +291,14 @@ function AdminContent() {
           <tbody>
             {items === null && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center font-body text-body-sm text-on-surface-variant">
+                <td colSpan={6} className="px-4 py-8 text-center font-body text-body-sm text-on-surface-variant">
                   Cargando…
                 </td>
               </tr>
             )}
             {items?.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center font-body text-body-sm text-on-surface-variant">
+                <td colSpan={6} className="px-4 py-8 text-center font-body text-body-sm text-on-surface-variant">
                   No hay profesionales en este estado.
                 </td>
               </tr>
@@ -299,6 +311,7 @@ function AdminContent() {
                 <td className="px-4 py-3 font-body text-body-sm text-on-surface-variant">
                   {p.document_type}-{p.document_number}
                 </td>
+                <td className="px-4 py-3"><SectorFitBadge fit={p.sector_fit} /></td>
                 <td className="px-4 py-3 font-body text-body-sm text-on-surface-variant">
                   <div>{p.email}</div>
                   <div className={p.email_verified ? "text-secondary" : "text-error"}>{p.email_verified ? "Correo verificado" : "Correo sin verificar"}</div>
@@ -311,6 +324,7 @@ function AdminContent() {
                   </span>
                 </td>
                 <td className="px-4 py-3">
+                  <details className="mb-3 max-w-md rounded border border-border-subtle p-2 font-body text-body-sm"><summary className="cursor-pointer font-label text-label-sm text-primary-container">Ver resumen para moderar</summary><div className="mt-3 space-y-2"><p><strong>Sector:</strong> {p.sector} · {p.area} / {p.subarea}</p><p><strong>Experiencia:</strong> {p.experience_years} años · {p.last_position}</p><p><strong>Formación:</strong> {p.education_level}</p><p><strong>Resumen:</strong> {p.bio_summary}</p><p><strong>Certificaciones:</strong> {p.certifications.join(", ") || "No informadas"}</p><p><strong>Idiomas:</strong> {p.languages.join(", ") || "No informados"}</p><p><strong>Disponibilidad:</strong> {p.immediate_availability ? "Inmediata" : "A convenir"}{p.relocation_willing ? " · Disponible para reubicación" : ""}</p>{p.sector_fit.signals.length > 0 && <p><strong>Señales:</strong> {p.sector_fit.signals.join(" · ")}</p>}{p.sector_fit.considerations.map((item) => <p className="text-on-surface-variant" key={item}>{item}</p>)}</div></details>
                   {status === "pending" && (
                     <div className="flex gap-2">
                       <button
@@ -374,6 +388,7 @@ function AdminContent() {
                   <th className="px-4 py-3 font-label text-label-sm text-on-surface-variant">Empresa</th>
                   <th className="px-4 py-3 font-label text-label-sm text-on-surface-variant">RIF</th>
                   <th className="px-4 py-3 font-label text-label-sm text-on-surface-variant">Contacto</th>
+                  <th className="px-4 py-3 font-label text-label-sm text-on-surface-variant">Afinidad sectorial</th>
                   <th className="px-4 py-3 font-label text-label-sm text-on-surface-variant">Estado</th>
                   <th className="px-4 py-3 font-label text-label-sm text-on-surface-variant">Acciones</th>
                 </tr>
@@ -381,14 +396,14 @@ function AdminContent() {
               <tbody>
                 {companies === null && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center font-body text-body-sm text-on-surface-variant">
+                    <td colSpan={6} className="px-4 py-8 text-center font-body text-body-sm text-on-surface-variant">
                       Cargando…
                     </td>
                   </tr>
                 )}
                 {companies?.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center font-body text-body-sm text-on-surface-variant">
+                    <td colSpan={6} className="px-4 py-8 text-center font-body text-body-sm text-on-surface-variant">
                       No hay empresas {COMPANY_STATUS_TABS.find((item) => item.value === companyStatus)?.label.toLowerCase()}.
                     </td>
                   </tr>
@@ -401,12 +416,14 @@ function AdminContent() {
                       <div>{c.email}</div>
                       <div>{c.phone}</div>
                     </td>
+                    <td className="px-4 py-3"><SectorFitBadge fit={c.sector_fit} /></td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-2.5 py-1 font-label text-label-sm ${COMPANY_STATUS_BADGE[c.status]}`}>
                         {COMPANY_STATUS_TABS.find((item) => item.value === c.status)?.label.slice(0, -1)}
                       </span>
                     </td>
                     <td className="px-4 py-3">
+                      <details className="mb-3 max-w-md rounded border border-border-subtle p-2 font-body text-body-sm"><summary className="cursor-pointer font-label text-label-sm text-primary-container">Ver resumen para moderar</summary><div className="mt-3 space-y-2"><p><strong>Líneas:</strong> {c.business_areas.join(" · ") || "No informadas"}</p><p><strong>Servicios:</strong> {c.energy_services.join(", ") || "No informados"}</p><p><strong>Actividad:</strong> {c.business_description || "No informada"}</p>{c.website && <a className="block text-primary-container underline" href={c.website} target="_blank" rel="noreferrer">Sitio web corporativo</a>}{c.sector_fit.signals.length > 0 && <p><strong>Señales:</strong> {c.sector_fit.signals.join(" · ")}</p>}{c.sector_fit.considerations.map((item) => <p className="text-on-surface-variant" key={item}>{item}</p>)}</div></details>
                       {c.status === "pending" ? (
                         <div className="flex gap-2">
                           <button

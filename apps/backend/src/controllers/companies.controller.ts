@@ -70,7 +70,7 @@ companiesController.get("/me", companyAuthMiddleware, async (c) => {
   const prisma = createPrismaClient(c.env);
   const company = await prisma.company.findUnique({
     where: { id: c.get("companyId") },
-    select: { id: true, name: true, rif: true, email: true, phone: true, isVerified: true, isActive: true, createdAt: true },
+    select: { id: true, name: true, rif: true, email: true, phone: true, businessAreas: true, energyServices: true, businessDescription: true, website: true, isVerified: true, isActive: true, createdAt: true },
   });
 
   if (!company) {

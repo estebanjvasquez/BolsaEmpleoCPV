@@ -16,7 +16,7 @@ export async function registerCompany(
   input: CompanyRegistrationInput,
   prisma: PrismaClient,
 ): Promise<{ id: string }> {
-  // Sequential, not Promise.all — concurrent queries against the Hyperdrive/
+  // Sequential, not Promise.all â€” concurrent queries against the Hyperdrive/
   // Supavisor transaction pooler within one request can starve the pool
   // (see professional-registration.service.ts).
   const existingByEmail = await prisma.company.findUnique({ where: { email: input.email }, select: { id: true } });
@@ -38,6 +38,10 @@ export async function registerCompany(
         rif: input.rif,
         email: input.email,
         phone: input.phone,
+        businessAreas: input.business_areas,
+        energyServices: input.energy_services,
+        businessDescription: input.business_description,
+        website: input.website,
         passwordHash,
       },
       select: { id: true },
@@ -69,7 +73,7 @@ export async function loginCompany(
   }
 
   // "type" prevents a company token from being replayed against admin-only
-  // routes (or vice versa) — see admin-auth.service.ts for the counterpart.
+  // routes (or vice versa) â€” see admin-auth.service.ts for the counterpart.
   const token = await sign(
     { sub: company.id, type: "company", version: company.sessionVersion, exp: Math.floor(Date.now() / 1000) + TOKEN_TTL_SECONDS },
     jwtSecret,
@@ -86,7 +90,7 @@ export async function updateCompanyProfile(id: string, input: CompanyProfileUpda
     const duplicate = await prisma.company.findUnique({ where: { email: input.email }, select: { id: true } });
     if (duplicate) throw new HttpError(400, "Bad Request", "Validation failed", { email: "El correo ya está registrado" });
   }
-  return prisma.company.update({ where: { id }, data: input, select: { id: true, name: true, email: true, phone: true } });
+  return prisma.company.update({ where: { id }, data: { name: input.name, email: input.email, phone: input.phone, businessAreas: input.business_areas, energyServices: input.energy_services, businessDescription: input.business_description, website: input.website }, select: { id: true, name: true, email: true, phone: true, businessAreas: true, energyServices: true, businessDescription: true, website: true } });
 }
 
 export async function createCompanyPasswordReset(email: string, prisma: PrismaClient) {
@@ -106,5 +110,5 @@ export async function resetCompanyPassword(token: string, password: string, pris
     where: { id: company.id, passwordResetTokenHash: tokenHash, passwordResetExpiresAt: { gt: new Date() }, isActive: true },
     data: { passwordHash, passwordResetTokenHash: null, passwordResetExpiresAt: null, sessionVersion: { increment: 1 } },
   });
-  if (consumed.count !== 1) throw new HttpError(400, "Bad Request", "El enlace no es v�lido o expir�");
+  if (consumed.count !== 1) throw new HttpError(400, "Bad Request", "El enlace no es válido o expiró");
 }
